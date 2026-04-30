@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
+import socket from '../socket/socket';
 
 export const useAuctionSimulator = () => {
   const [liveItem, setLiveItem] = useState(null);
@@ -111,7 +112,10 @@ export const useAuctionSimulator = () => {
       return { success: false, error: `Bid must be at least $${minNext.toFixed(2)}` };
     }
     updateItem(itemId, { currentBid: amount });
+    // Notify backend REST endpoint
     api.post(`/auctions/${itemId}/bid`, { amount, userId }).catch(console.warn);
+    // Emit socket event for real-time updates (server will broadcast live_activity)
+    try { socket.emit('place_bid_socket', { itemId, userId, amount }); } catch (e) { console.warn('Socket emit failed', e); }
     return { success: true, itemName: item.name };
   }, [liveItem, otherItems, updateItem]);
 

@@ -15,6 +15,8 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import ManageUsers from './components/admin/ManageUsers';
 import ManageAuctions from './components/admin/ManageAuctions';
 import OtherAuctionsManager from './components/admin/OtherAuctionsManager';
+import Topbar from './components/Topbar';
+import LiveActivity from './components/LiveActivity';
 import { useAuctionSimulator } from './hooks/useAuctionSimulator';
 import { formatUSD } from './utils/helpers';
 import api from './api/axios';
@@ -390,6 +392,8 @@ const AuctionPage = ({ showToast }) => {
       )}
 
       {/* Live Auction Header */}
+      <Topbar user={user} />
+
       <div className="live-badge">
         <h2>Live Auction</h2>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -402,8 +406,10 @@ const AuctionPage = ({ showToast }) => {
         </div>
       </div>
 
-      {/* Live Card */}
-      <div className="live-card">
+      <div className="dashboard-grid">
+        <div className="dashboard-main">
+          {/* Live Card */}
+          <div className="live-card">
         <div className="live-header">
           <span className="live-badge-red"><i className="fas fa-broadcast-tower"></i> LIVE NOW</span>
         </div>
@@ -486,6 +492,12 @@ const AuctionPage = ({ showToast }) => {
             onImageUpdate={handleCardImageUpdate}
           />
         ))}
+      </div>
+
+        </div>
+        <div className="dashboard-right">
+          <LiveActivity />
+        </div>
       </div>
     </main>
   );

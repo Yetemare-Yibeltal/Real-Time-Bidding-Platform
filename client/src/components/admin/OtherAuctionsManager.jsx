@@ -103,6 +103,28 @@ const OtherAuctionsManager = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this auction? This action is permanent.')) return;
+    try {
+      await api.delete(`/admin/auctions/${id}`);
+      alert('Deleted');
+      fetchOtherItems();
+    } catch (err) {
+      alert('Delete failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleForceEnd = async (id) => {
+    if (!window.confirm('Force end this auction now?')) return;
+    try {
+      await api.post(`/admin/auctions/${id}/force-end`);
+      alert('Auction forced to end');
+      fetchOtherItems();
+    } catch (err) {
+      alert('Force end failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   if (loading) return <div>Loading other auction items...</div>;
 
   return (
@@ -125,7 +147,11 @@ const OtherAuctionsManager = () => {
                 <td>${item.currentBid}</td>
                 <td>${item.minIncrement}</td>
                 <td>{new Date(item.endTime).toLocaleString()}</td>
-                <td><button onClick={() => openEditModal(item)}>✏️ Edit</button></td>
+                <td style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => openEditModal(item)}>✏️ Edit</button>
+                  <button onClick={() => handleForceEnd(item.id)} style={{ background: '#f59e0b', border: 'none', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer' }}>⏱️ Force End</button>
+                  <button onClick={() => handleDelete(item.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer' }}>🗑️ Delete</button>
+                </td>
               </tr>
             ))}
           </tbody>

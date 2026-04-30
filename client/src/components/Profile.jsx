@@ -3,14 +3,21 @@ import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
   const { user, logout } = useAuth();
+  const { updateProfile } = useAuth();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
 
   const handleSave = () => {
-    // In a real app, send to backend. Here we just simulate.
-    localStorage.setItem(`userName_${user.id}`, name);
-    setEditing(false);
-    alert('Profile updated (demo)');
+    // send update to backend
+    updateProfile({ name })
+      .then(() => {
+        setEditing(false);
+        alert('Profile updated');
+      })
+      .catch(err => {
+        console.error('Update failed', err);
+        alert(err.response?.data?.error || 'Update failed');
+      });
   };
 
   return (
