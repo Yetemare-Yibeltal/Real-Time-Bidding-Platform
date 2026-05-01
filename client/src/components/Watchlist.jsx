@@ -1,6 +1,8 @@
 import React from 'react';
 import { useUserData } from '../context/UserDataContext';
 import { useAuctionSimulator } from '../hooks/useAuctionSimulator';
+import api from '../api/axios';
+import { usePayment } from '../context/PaymentContext';
 import { formatUSD } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,6 +37,9 @@ const WatchlistAuctionCard = ({ item, onBid, formatUSD, onRemove }) => {
 
   const minNextBid = item.currentBid + item.minIncrement;
   const urgent = !isExpired && timeLeft !== 'Expired' && timeLeft.split(' ')[0] === '0h';
+  const isBiddable = Number.isInteger(Number(item.id));
+  const { openPayment } = usePayment();
+  const DEMO_BID_FEE = 5.0;
 
   // Star rating helper
   const renderStars = (rating = 4.5) => {
@@ -82,20 +87,32 @@ const WatchlistAuctionCard = ({ item, onBid, formatUSD, onRemove }) => {
           <span className={urgent ? 'urgent' : ''}>{timeLeft || '--:--:--'}</span>
         </div>
         {!isExpired && (
-          <div className="bid-section">
-            <label className="bid-label-small">Your bid ($)</label>
-            <input
-              type="number"
-              value={bidAmount}
-              onChange={(e) => setBidAmount(parseFloat(e.target.value))}
-              step={item.minIncrement}
-              min={minNextBid}
-              className="bid-input-small"
-            />
-            <button onClick={() => onBid(bidAmount)} className="bid-button-small">
-              <i className="fas fa-gavel"></i> Bid
-            </button>
-          </div>
+          isBiddable ? (
+            <div className="bid-section">
+              <label className="bid-label-small">Your bid ($)</label>
+              <input
+                type="number"
+                value={bidAmount}
+                onChange={(e) => setBidAmount(parseFloat(e.target.value))}
+                step={item.minIncrement}
+                min={minNextBid}
+                className="bid-input-small"
+              />
+              <button onClick={() => onBid(bidAmount)} className="bid-button-small">
+                <i className="fas fa-gavel"></i> Bid
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+              <div className="demo-badge" title="This is a demo/mock item and cannot receive bids. Use admin to create real auctions or click Pay to enable bidding for your account.">Demo item — not biddable</div>
+              <button className="bid-button-small secondary" onClick={() => {
+                const toPay = minNextBid || (item.currentBid + item.minIncrement);
+                if (window.confirm(`Pay $${toPay.toFixed(2)} to enable bidding for this account?`)) {
+                  openPayment(toPay, item.id, 'bid_access');
+                }
+              }}>Pay to enable bidding (${DEMO_BID_FEE})</button>
+            </div>
+          )
         )}
         {isExpired && <div className="expired-message"><i className="fas fa-hourglass-end"></i> Ended</div>}
       </div>
@@ -107,21 +124,36 @@ const Watchlist = () => {
   const { user } = useAuth();
   const { watchlist, removeFromWatchlist } = useUserData();
   const { placeBid, updateItem } = useAuctionSimulator();
+  const { openPayment } = usePayment();
 
-  const handleBid = (item, amount) => {
+  const handleBid = async (item, amount) => {
     if (!user) return;
-    const result = placeBid(item.id, amount, user.id);
-    if (result.success) {
-      alert(`✅ You bid ${formatUSD(amount)} on ${item.name}!`);
-      // Simulate rival bid after 7 seconds (optional)
-      setTimeout(() => {
-        if (item.active && (item.endTime - Date.now()) > 0) {
-          const rivalBid = item.currentBid + item.minIncrement;
-          updateItem(item.id, { currentBid: rivalBid });
+    if (!Number.isInteger(Number(item.id))) { alert('Cannot place bid on demo item'); return; }
+    try {
+      const result = await placeBid(item.id, amount);
+      if (result && result.success) {
+        alert(`✅ You bid ${formatUSD(amount)} on ${item.name}!`);
+        setTimeout(() => {
+          if (item.active && (item.endTime - Date.now()) > 0) {
+            const rivalBid = item.currentBid + item.minIncrement;
+            updateItem(item.id, { currentBid: rivalBid });
+          }
+        }, 7000);
+        } else if (result && result.needPayment) {
+        try {
+          openPayment(amount, item.id, 'bid_access');
+        } catch (e) {
+          const payload = { amount: amount, currency: 'usd', description: 'Bid access fee', purpose: 'bid_access' };
+          const res = await api.post('/billing/create-session', payload);
+          if (res.data?.url) window.location.href = res.data.url;
+          else alert('Failed to start Checkout session');
         }
-      }, 7000);
-    } else {
-      alert(result.error);
+      } else {
+        alert(result?.error || 'Bid failed');
+      }
+    } catch (err) {
+      console.error('Bid error', err);
+      alert('Error placing bid');
     }
   };
 

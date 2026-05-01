@@ -803,6 +803,32 @@ body {
   font-weight: 500;
 }
 
+/* Demo badge for non-biddable items */
+.demo-badge {
+  font-size: 0.9rem;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  text-align: center;
+}
+
+.demo-badge[title] {
+  cursor: help;
+}
+
+/* Secondary small bid button (used for demo pay CTAs) */
+.bid-button-small.secondary {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.bid-button-small.secondary:hover {
+  background-color: #f1f5f9;
+  transform: none;
+}
+
 /* ===== GRID ===== */
 .grid-container {
   display: grid;

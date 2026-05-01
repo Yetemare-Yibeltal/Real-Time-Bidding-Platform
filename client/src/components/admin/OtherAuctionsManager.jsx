@@ -9,9 +9,36 @@ const OtherAuctionsManager = () => {
     name: '', description: '', currentBid: '', minIncrement: '', endTime: '', image: null, imagePreview: ''
   });
   const [updating, setUpdating] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [checkoutSessionId, setCheckoutSessionId] = useState(null);
 
   useEffect(() => {
     fetchOtherItems();
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('checkout') === 'success') {
+        setCheckoutSuccess(true);
+        const sid = params.get('session_id');
+        if (sid) setCheckoutSessionId(sid);
+        // Refresh current user's payments to ensure bidding becomes available
+        (async () => {
+          try {
+            await api.get('/billing/my-payments');
+            // Inform other parts of the app that payments changed and refresh auctions
+            window.dispatchEvent(new CustomEvent('payments-updated'));
+            window.dispatchEvent(new CustomEvent('auctions-updated'));
+          } catch (err) {
+            console.warn('Failed to refresh my payments', err);
+          }
+        })();
+        // remove query params so message doesn't reappear on refresh
+        const newPath = window.location.pathname;
+        window.history.replaceState({}, document.title, newPath);
+      }
+    } catch (err) {
+      // ignore
+    }
   }, []);
 
   const fetchOtherItems = async () => {
@@ -80,6 +107,12 @@ const OtherAuctionsManager = () => {
     e.preventDefault();
     if (!editingItem) return;
     setUpdating(true);
+    const auctionId = Number(editingItem.id);
+    if (isNaN(auctionId)) {
+      alert('Invalid auction ID');
+      setUpdating(false);
+      return;
+    }
     const formData = new FormData();
     formData.append('name', editForm.name);
     formData.append('description', editForm.description);
@@ -89,7 +122,7 @@ const OtherAuctionsManager = () => {
     formData.append('active', 'true');
     if (editForm.image) formData.append('image', editForm.image);
     try {
-      await api.put(`/admin/auctions/${editingItem.id}`, formData, {
+      await api.put(`/admin/auctions/${auctionId}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       window.dispatchEvent(new CustomEvent('auctions-updated'));
@@ -106,7 +139,9 @@ const OtherAuctionsManager = () => {
   const handleRemoveImage = async (id) => {
     if (!window.confirm('Remove the image for this auction?')) return;
     try {
-      await api.delete(`/admin/auctions/${id}/image`);
+      const auctionId = Number(id);
+      if (isNaN(auctionId)) { alert('Invalid auction ID'); return; }
+      await api.delete(`/admin/auctions/${auctionId}/image`);
       alert('Image removed');
       fetchOtherItems();
       setEditingItem(null);
@@ -118,7 +153,9 @@ const OtherAuctionsManager = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this auction? This action is permanent.')) return;
     try {
-      await api.delete(`/admin/auctions/${id}`);
+      const auctionId = Number(id);
+      if (isNaN(auctionId)) { alert('Invalid auction ID'); return; }
+      await api.delete(`/admin/auctions/${auctionId}`);
       alert('Deleted');
       fetchOtherItems();
     } catch (err) {
@@ -129,7 +166,9 @@ const OtherAuctionsManager = () => {
   const handleForceEnd = async (id) => {
     if (!window.confirm('Force end this auction now?')) return;
     try {
-      await api.post(`/admin/auctions/${id}/force-end`);
+      const auctionId = Number(id);
+      if (isNaN(auctionId)) { alert('Invalid auction ID'); return; }
+      await api.post(`/admin/auctions/${auctionId}/force-end`);
       alert('Auction forced to end');
       fetchOtherItems();
     } catch (err) {
@@ -142,6 +181,11 @@ const OtherAuctionsManager = () => {
   return (
     <div className="other-auctions-manager" style={{ padding: '20px' }}>
       <h2>🛠️ Manage "Other Auction Items" (non‑live auctions)</h2>
+      {checkoutSuccess && (
+        <div style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '10px', borderRadius: 8, marginBottom: 12 }}>
+          ✅ Payment successful. If you chose to seed mock auctions, they have been added. {checkoutSessionId && <span>Session: {checkoutSessionId}</span>}
+        </div>
+      )}
       <p>These are the auctions shown below the live card. Click "Edit" to change any field.</p>
       
       {otherItems.length === 0 ? (

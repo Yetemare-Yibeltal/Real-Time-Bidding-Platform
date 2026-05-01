@@ -76,10 +76,20 @@ export default function AdminDashboard() {
     }
   };
 
-  // NEW: Seed mock auctions into database
+  // NEW: Seed mock auctions into database with confirmation and optional count
   const seedMockAuctions = async () => {
+    const confirmMsg = 'Seed mock auctions will add test items to your database. This operation is intended for development only. Continue?';
+    if (!window.confirm(confirmMsg)) return;
+
+    let count = 4; // default number of items
+    const userInput = window.prompt('How many mock auctions would you like to add? (1-20)', '4');
+    if (userInput !== null) {
+      const n = parseInt(userInput, 10);
+      if (!isNaN(n) && n > 0 && n <= 100) count = n;
+    }
+
     try {
-      await api.post('/admin/seed-mock-auctions');
+      await api.post('/admin/seed-mock-auctions', { count });
       alert('✅ Mock auctions added to your database!');
       refreshAuctions();   // refresh live/other items on main page
       fetchStats();        // update stats

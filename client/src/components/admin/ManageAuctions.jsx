@@ -62,6 +62,36 @@ export default function ManageAuctions() {
     }
   };
 
+  const handleCreateAndPay = async (e) => {
+    e.preventDefault();
+    if (!form.name || !form.currentBid || !form.minIncrement || !form.endTime) {
+      alert('Please fill in all required fields before paying');
+      return;
+    }
+    const selectedDate = new Date(form.endTime);
+    if (isNaN(selectedDate.getTime())) {
+      alert('Please select a valid date and time');
+      return;
+    }
+    const listingFee = 5.00; // fixed listing fee for now
+    try {
+      const auctionData = {
+        name: form.name,
+        description: form.description || '',
+        currentBid: Number(form.currentBid),
+        minIncrement: Number(form.minIncrement),
+        endTime: selectedDate.toISOString(),
+        imagePath: '/uploads/placeholder.jpg'
+      };
+      const res = await api.post('/billing/create-session', { amount: listingFee, description: `Listing fee for ${form.name}`, createAuction: true, auctionData });
+      if (res.data?.url) window.location.href = res.data.url;
+      else alert('Failed to create checkout session');
+    } catch (err) {
+      console.error('Create & Pay error', err.response || err.message);
+      alert('Failed to start payment');
+    }
+  };
+
   const resetForm = () => {
     setForm({ name: '', description: '', currentBid: '', minIncrement: '', endTime: '', image: null });
     setEditingId(null);
@@ -113,6 +143,7 @@ export default function ManageAuctions() {
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Saving...' : (editingId ? 'Update Auction' : 'Create Auction')}
             </button>
+            <button type="button" className="btn-secondary" onClick={handleCreateAndPay} style={{ marginLeft: 8 }}>Create & Pay ($5)</button>
             {editingId && (
               <button type="button" className="btn-secondary" onClick={resetForm}>Cancel</button>
             )}

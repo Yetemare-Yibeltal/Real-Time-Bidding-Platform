@@ -14,10 +14,13 @@ import Settings from './components/Settings';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ManageUsers from './components/admin/ManageUsers';
 import ManageAuctions from './components/admin/ManageAuctions';
+import Billing from './components/admin/Billing';
+import Payments from './components/admin/Payments';
 import OtherAuctionsManager from './components/admin/OtherAuctionsManager';
 import Topbar from './components/Topbar';
 import LiveActivity from './components/LiveActivity';
 import { useAuctionSimulator } from './hooks/useAuctionSimulator';
+import { PaymentProvider, usePayment } from './context/PaymentContext';
 import { formatUSD } from './utils/helpers';
 import api from './api/axios';
 
@@ -70,6 +73,12 @@ const Sidebar = ({ showToast, user, logout }) => {
             <Link to="/admin/other-auctions" className="sidebar-link">
               <i className="fas fa-list-ul"></i> Other Auction Items
             </Link>
+            <Link to="/admin/billing" className="sidebar-link">
+              <i className="fas fa-credit-card"></i> Billing
+            </Link>
+            <Link to="/admin/payments" className="sidebar-link">
+              <i className="fas fa-receipt"></i> Payments
+            </Link>
           </>
         )}
         <hr />
@@ -82,7 +91,7 @@ const Sidebar = ({ showToast, user, logout }) => {
 };
 
 // AuctionBox Component – with Edit (pencil) and Camera buttons for admin
-const AuctionBox = ({ item, onBid, formatUSD, isInWatchlist, onToggleWatchlist, user, onEdit, onImageUpdate }) => {
+const AuctionBox = ({ item, onBid, formatUSD, isInWatchlist, onToggleWatchlist, user, onEdit, onImageUpdate, onUpdate }) => {
   const [timeLeft, setTimeLeft] = useState('');
   const [bidAmount, setBidAmount] = useState(item.currentBid + item.minIncrement);
   const isExpired = new Date(item.endTime) <= new Date();
@@ -101,6 +110,9 @@ const AuctionBox = ({ item, onBid, formatUSD, isInWatchlist, onToggleWatchlist, 
 
   const minNextBid = item.currentBid + item.minIncrement;
   const urgent = !isExpired && timeLeft !== 'Expired' && timeLeft.split(' ')[0] === '0h';
+  const isBiddable = Number.isInteger(Number(item.id));
+  const { openPayment, startCheckout } = usePayment();
+  const DEMO_BID_FEE = 5.0;
 
   const renderStars = (rating = 4.5) => {
     const fullStars = Math.floor(rating);
@@ -133,6 +145,37 @@ const AuctionBox = ({ item, onBid, formatUSD, isInWatchlist, onToggleWatchlist, 
     }
   };
 
+  const handleMinEdit = async () => {
+    if (!user || user.role !== 'admin') return;
+    const input = window.prompt('Enter new minimum increment ($)', String(item.minIncrement || '0'));
+    if (input === null) return;
+    const val = parseFloat(input);
+    if (isNaN(val) || val < 0) { alert('Invalid minimum increment'); return; }
+    const formData = new FormData();
+    formData.append('name', item.name || '');
+    formData.append('description', item.description || '');
+    formData.append('currentBid', String(item.currentBid || 0));
+    formData.append('minIncrement', String(val));
+    formData.append('endTime', new Date(item.endTime).toISOString());
+    formData.append('active', item.active ? 'true' : 'false');
+    try {
+      const res = await api.put(`/admin/auctions/${item.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (onUpdate) onUpdate(item.id, {
+        minIncrement: res.data.minIncrement,
+        currentBid: res.data.currentBid,
+        imagePath: res.data.imagePath,
+        endTime: new Date(res.data.endTime).getTime(),
+        name: res.data.name,
+        description: res.data.description
+      });
+    } catch (err) {
+      console.error('Min increment update failed', err.response?.data || err.message);
+      alert('Update failed');
+    }
+  };
+
   return (
     <div className="auction-card">
       <div className="card-image">
@@ -147,7 +190,7 @@ const AuctionBox = ({ item, onBid, formatUSD, isInWatchlist, onToggleWatchlist, 
         >
           <i className={`fas fa-${isInWatchlist ? 'heart' : 'heart-broken'}`}></i>
         </button>
-        {user?.role === 'admin' && (
+            {user?.role === 'admin' && (
           <>
             <button
               className="edit-card-btn"
@@ -164,6 +207,13 @@ const AuctionBox = ({ item, onBid, formatUSD, isInWatchlist, onToggleWatchlist, 
             >
               <i className="fas fa-camera"></i>
             </button>
+                <button
+                  className="min-edit-btn"
+                  onClick={handleMinEdit}
+                  title="Edit minimum increment"
+                >
+                  Min
+                </button>
             <input
               type="file"
               id={`file-input-${item.id}`}
@@ -190,13 +240,25 @@ const AuctionBox = ({ item, onBid, formatUSD, isInWatchlist, onToggleWatchlist, 
           <span className={urgent ? 'urgent' : ''}>{timeLeft || '--:--:--'}</span>
         </div>
         {!isExpired && (
-          <div className="bid-section">
-            <label className="bid-label-small">Your bid ($)</label>
-            <input type="number" value={bidAmount} onChange={(e) => setBidAmount(parseFloat(e.target.value))} step={item.minIncrement} min={minNextBid} className="bid-input-small" />
-            <button onClick={() => onBid(bidAmount)} className="bid-button-small">
-              <i className="fas fa-gavel"></i> Bid
-            </button>
-          </div>
+          isBiddable ? (
+            <div className="bid-section">
+              <label className="bid-label-small">Your bid ($)</label>
+              <input type="number" value={bidAmount} onChange={(e) => setBidAmount(parseFloat(e.target.value))} step={item.minIncrement} min={minNextBid} className="bid-input-small" />
+              <button onClick={() => onBid(bidAmount)} className="bid-button-small">
+                <i className="fas fa-gavel"></i> Bid
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+              <div className="demo-badge" title="This is a demo/mock item and cannot receive bids. Use admin to create real auctions or click Pay to enable bidding for your account.">Demo item — not biddable</div>
+              <button className="bid-button-small secondary" onClick={() => {
+                const toPay = minNextBid || (item.currentBid + item.minIncrement);
+                if (window.confirm(`Pay $${toPay.toFixed(2)} to enable bidding for this account?`)) {
+                  openPayment(toPay, item.id, 'bid_access');
+                }
+              }}>Pay to enable bidding (${DEMO_BID_FEE})</button>
+            </div>
+          )
         )}
         {isExpired && <div className="expired-message"><i className="fas fa-hourglass-end"></i> Ended</div>}
       </div>
@@ -223,6 +285,7 @@ const AuctionPage = ({ showToast }) => {
   const { user } = useAuth();
   const { addBid, isInWatchlist, addToWatchlist, removeFromWatchlist } = useUserData();
   const { liveItem, otherItems, loading, placeBid, updateItem, refreshAuctions } = useAuctionSimulator();
+  const { openPayment } = usePayment();
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -238,6 +301,7 @@ const AuctionPage = ({ showToast }) => {
   });
   const [updating, setUpdating] = useState(false);
   const [uploadingLiveImage, setUploadingLiveImage] = useState(false);
+  // NOTE: payment modal moved to PaymentContext; use `usePayment()` inside components
 
   useEffect(() => {
     if (editingItem) {
@@ -263,6 +327,7 @@ const AuctionPage = ({ showToast }) => {
     if (!editingItem) return;
     setUpdating(true);
     const numericId = Number(editingItem.id);
+    console.log('Editing auction id:', editingItem.id, 'numeric:', numericId);
     if (isNaN(numericId)) {
       showToast('❌ Invalid auction ID');
       setUpdating(false);
@@ -325,25 +390,75 @@ const AuctionPage = ({ showToast }) => {
     showToast('✅ Image updated');
   };
 
-  const handlePlaceBid = (itemId, amount, isLive = true) => {
+  const BID_FEE_USD = 5.0;
+  const PAY_PER_BID = true; // when true, every bid click triggers a payment for that bid amount
+  const handlePlaceBid = async (itemId, amount, isLive = true, bypassPayment = false) => {
     if (!user) { showToast('Please login to bid'); return; }
     const item = isLive ? liveItem : otherItems.find(i => i.id === itemId);
     if (!item) return;
-    const result = placeBid(itemId, amount, user.id);
-    if (result.success) {
-      addBid({ itemId, itemName: item.name, amount });
-      showToast(`✅ You bid ${formatUSD(amount)} on ${item.name}!`);
-      setTimeout(() => {
-        if (item.active && (item.endTime - Date.now()) > 0) {
-          const rivalBid = item.currentBid + item.minIncrement;
-          updateItem(itemId, { currentBid: rivalBid });
-          showToast(`⚡ New bid on ${item.name}: ${formatUSD(rivalBid)}`);
-        }
-      }, 7000);
-    } else {
-      alert(result.error);
+    // If pay-per-bid is enabled, require a payment per bid unless bypassPayment is true
+    if (PAY_PER_BID && !bypassPayment) {
+      showToast('Payment required to place this bid');
+      try {
+        await startCheckout({ fee: amount, purpose: 'bid_payment', itemId });
+      } catch (e) {
+        openPayment(amount, itemId, 'bid_payment');
+      }
+      return;
+    }
+    // Prevent bidding on demo/non-numeric items
+    if (!Number.isInteger(Number(itemId))) { showToast('Cannot place bid on demo item'); return; }
+    try {
+      const result = await placeBid(itemId, amount);
+      if (result && result.success) {
+        addBid({ itemId, itemName: item.name, amount });
+        showToast(`✅ You bid ${formatUSD(amount)} on ${item.name}!`);
+        setTimeout(() => {
+          if (item.active && (item.endTime - Date.now()) > 0) {
+            const rivalBid = item.currentBid + item.minIncrement;
+            updateItem(itemId, { currentBid: rivalBid });
+            showToast(`⚡ New bid on ${item.name}: ${formatUSD(rivalBid)}`);
+          }
+        }, 7000);
+      } else if (result && result.needPayment) {
+        openPayment(amount, itemId, 'bid_access');
+      } else {
+        showToast(`❌ Bid failed: ${result?.error || 'unknown'}`);
+      }
+    } catch (e) {
+      console.error('Place bid error', e);
+      showToast('❌ Error placing bid');
     }
   };
+
+  // On return from checkout, if there's a pending bid saved, attempt to place it
+  useEffect(() => {
+    const tryPending = async () => {
+      if (!user || !user.hasBidAccess) return;
+      const raw = localStorage.getItem('pendingBid');
+      if (!raw) return;
+      try {
+        const obj = JSON.parse(raw);
+        if (!obj || !obj.itemId || !obj.amount) { localStorage.removeItem('pendingBid'); return; }
+        // directly call placeBid API (bypass payment) because payment just completed
+        const result = await placeBid(obj.itemId, obj.amount);
+        if (result && result.success) {
+          addBid({ itemId: obj.itemId, itemName: (otherItems.find(i=>i.id==obj.itemId)||liveItem||{}).name, amount: obj.amount });
+          showToast(`✅ Your paid bid ${formatUSD(obj.amount)} was placed.`);
+          // update local UI optimistically
+          const rival = (otherItems.find(i=>i.id==obj.itemId)||liveItem||{}).currentBid || 0;
+          updateItem(obj.itemId, { currentBid: Math.max(rival, obj.amount) });
+        } else {
+          showToast('❌ Paid bid failed to place');
+        }
+      } catch (e) {
+        console.error('Failed to place pending bid', e);
+      } finally {
+        localStorage.removeItem('pendingBid');
+      }
+    };
+    tryPending();
+  }, [user, liveItem, otherItems]);
 
   const handleToggleWatchlist = (item) => {
     if (isInWatchlist(item.id)) {
@@ -390,6 +505,8 @@ const AuctionPage = ({ showToast }) => {
           </div>
         </div>
       )}
+
+      {/* Payment modal is provided globally by PaymentProvider */}
 
       {/* Live Auction Header */}
       <Topbar user={user} />
@@ -490,6 +607,7 @@ const AuctionPage = ({ showToast }) => {
             user={user}
             onEdit={openEditModal}
             onImageUpdate={handleCardImageUpdate}
+            onUpdate={updateItem}
           />
         ))}
       </div>
@@ -512,11 +630,31 @@ function App() {
     setTimeout(() => setToast({ message: '', visible: false }), 2800);
   }, []);
 
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const checkout = params.get('checkout');
+    if (!checkout) return;
+    if (checkout === 'success') {
+      showToast('✅ Payment successful — updating account');
+      // mark local quick-flag so subsequent clicks skip payment immediately
+      try { localStorage.setItem('hasBidAccess', 'true'); } catch (e) { }
+      // remove query params and force reload so AuthContext refreshes user
+      window.history.replaceState({}, document.title, location.pathname);
+      setTimeout(() => window.location.reload(), 900);
+    } else if (checkout === 'cancel') {
+      showToast('❌ Payment canceled');
+      window.history.replaceState({}, document.title, location.pathname);
+    }
+  }, [location.search, location.pathname, showToast]);
+
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div className="app-container">
       <div className="global-accent-bar"></div>
+      <PaymentProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -524,6 +662,8 @@ function App() {
         <Route path="/admin/users" element={<AdminRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><ManageUsers /></></AdminRoute>} />
         <Route path="/admin/auctions" element={<AdminRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><ManageAuctions /></></AdminRoute>} />
         <Route path="/admin/other-auctions" element={<AdminRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><OtherAuctionsManager /></></AdminRoute>} />
+        <Route path="/admin/billing" element={<AdminRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Billing /></></AdminRoute>} />
+        <Route path="/admin/payments" element={<AdminRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Payments /></></AdminRoute>} />
         <Route path="/" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><AuctionPage showToast={showToast} /></></PrivateRoute>} />
         <Route path="/my-bids" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><MyBids /></></PrivateRoute>} />
         <Route path="/watchlist" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Watchlist /></></PrivateRoute>} />
@@ -531,6 +671,7 @@ function App() {
         <Route path="/profile" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Profile /></></PrivateRoute>} />
         <Route path="/settings" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Settings /></></PrivateRoute>} />
       </Routes>
+      </PaymentProvider>
       <Toast message={toast.message} visible={toast.visible} />
     </div>
   );

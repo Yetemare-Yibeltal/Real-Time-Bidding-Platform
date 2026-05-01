@@ -103,20 +103,34 @@ export const useAuctionSimulator = () => {
   }, [liveItem?.id]);
 
   const placeBid = useCallback((itemId, amount, userId) => {
-    const item = itemId === liveItem?.id ? liveItem : otherItems.find(i => i.id === itemId);
-    if (!item || !item.active || item.endTime <= Date.now()) {
-      return { success: false, error: 'Auction not active or expired' };
-    }
-    const minNext = item.currentBid + item.minIncrement;
-    if (amount < minNext) {
-      return { success: false, error: `Bid must be at least $${minNext.toFixed(2)}` };
-    }
-    updateItem(itemId, { currentBid: amount });
-    // Notify backend REST endpoint
-    api.post(`/auctions/${itemId}/bid`, { amount, userId }).catch(console.warn);
-    // Emit socket event for real-time updates (server will broadcast live_activity)
-    try { socket.emit('place_bid_socket', { itemId, userId, amount }); } catch (e) { console.warn('Socket emit failed', e); }
-    return { success: true, itemName: item.name };
+    return (async () => {
+      const item = itemId === liveItem?.id ? liveItem : otherItems.find(i => i.id === itemId);
+      if (!item || !item.active || item.endTime <= Date.now()) {
+        return { success: false, error: 'Auction not active or expired' };
+      }
+      const minNext = item.currentBid + item.minIncrement;
+      if (amount < minNext) {
+        return { success: false, error: `Bid must be at least $${minNext.toFixed(2)}` };
+      }
+
+      try {
+        const res = await api.post(`/auctions/${itemId}/bid`, { amount });
+        if (res.data && res.data.success) {
+          updateItem(itemId, { currentBid: amount });
+          try { socket.emit('place_bid_socket', { itemId, amount }); } catch (e) { console.warn('Socket emit failed', e); }
+          return { success: true, itemName: item.name };
+        } else {
+          return { success: false, error: res.data?.error || 'Bid failed on server' };
+        }
+      } catch (err) {
+        const status = err.response?.status;
+        const message = err.response?.data?.error || err.message;
+        if (status === 402) {
+          return { success: false, error: message, needPayment: true };
+        }
+        return { success: false, error: message };
+      }
+    })();
   }, [liveItem, otherItems, updateItem]);
 
   return { liveItem, otherItems, loading, placeBid, updateItem, refreshAuctions: fetchAuctions };
