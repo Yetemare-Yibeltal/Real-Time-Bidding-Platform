@@ -34,6 +34,15 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const uploadAvatar = async (file) => {
+    const fd = new FormData();
+    fd.append('avatar', file);
+    const res = await api.post('/auth/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    // update user avatar (server returns { avatar: url })
+    setUser(prev => ({ ...prev, avatar: res.data.avatar }));
+    return res.data;
+  };
+
   const register = async (name, email, password) => {
     const res = await api.post('/auth/register', { name, email, password });
     localStorage.setItem('token', res.data.token);
@@ -47,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile, uploadAvatar }}>
       {children}
     </AuthContext.Provider>
   );

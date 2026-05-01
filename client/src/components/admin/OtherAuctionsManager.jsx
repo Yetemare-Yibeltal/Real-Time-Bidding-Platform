@@ -103,6 +103,18 @@ const OtherAuctionsManager = () => {
     }
   };
 
+  const handleRemoveImage = async (id) => {
+    if (!window.confirm('Remove the image for this auction?')) return;
+    try {
+      await api.delete(`/admin/auctions/${id}/image`);
+      alert('Image removed');
+      fetchOtherItems();
+      setEditingItem(null);
+    } catch (err) {
+      alert('Remove image failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this auction? This action is permanent.')) return;
     try {
@@ -181,6 +193,7 @@ const OtherAuctionsManager = () => {
               {editForm.imagePreview && <img src={editForm.imagePreview} width="100" style={{ marginBottom: '10px', borderRadius: '8px' }} alt="Preview" />}
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="submit" disabled={updating}>{updating ? 'Saving...' : 'Save Changes'}</button>
+                <button type="button" onClick={() => handleRemoveImage(editingItem.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer' }}>Remove Image</button>
                 <button type="button" onClick={() => setEditingItem(null)}>Cancel</button>
               </div>
             </form>
