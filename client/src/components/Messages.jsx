@@ -1,277 +1,89 @@
-import React, { useEffect, useRef, useState } from 'react';
-import './Messages.css';
-import api from '../api/axios';
-import socket, { onNewMessage } from '../socket/socket';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import api from '../api/axios'
+import socket, { onNewMessage } from '../socket/socket'
+import { useAuth } from '../context/AuthContext'
+import { Magnetic3DContainer } from './Magnetic3DContainer'
 
 const Messages = () => {
-  const { user } = useAuth();
-  const [search, setSearch] = useState('');
-  const [userResults, setUserResults] = useState([]);
-  const [searchingUsers, setSearchingUsers] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [selectedThread, setSelectedThread] = useState(null); // { partnerId, auctionId }
-  const [body, setBody] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth()
+  const [messages, setMessages] = useState([])
+  const [selectedThread, setSelectedThread] = useState(null)
+  const [body, setBody] = useState('')
+  const messagesContainerRef = useRef(null)
 
-
-  const fetchMessages = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/messages');
-      setMessages(res.data || []);
-    } catch (err) {
-      console.error('Failed to load messages', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const searchUsers = async (q) => {
-    try {
-      setSearchingUsers(true);
-      if (!q) { setUserResults([]); return; }
-      const res = await api.get(`/users?search=${encodeURIComponent(q)}`);
-      setUserResults(res.data || []);
-    } catch (err) {
-      console.error('User search failed', err);
-    } finally {
-      setSearchingUsers(false);
-    }
-  };
-
-
-
-  useEffect(() => { fetchMessages(); }, []);
-
-  // Real-time incoming messages
-  useEffect(() => {
-    const handler = (msg) => {
-      // prepend if new
-      setMessages(prev => {
-        if (prev.some(m => m.id === msg.id)) return prev;
-        return [msg, ...prev];
-      });
-
-      // if the conversation is open and matches, mark as read
-      if (selectedThread) {
-        const partner = msg.senderId === user.id ? msg.receiverId : msg.senderId;
-        const matchPartner = String(partner) === String(selectedThread.partnerId);
-        const matchAuction = (selectedThread.auctionId ? String(msg.auctionId) === String(selectedThread.auctionId) : !msg.auctionId);
-        if (matchPartner && matchAuction && msg.receiverId === user.id) {
-          markRead(msg);
-        }
-      }
-    };
-    onNewMessage(handler);
-    return () => { socket.off('new_message', handler); };
-  }, [selectedThread, user]);
-
-  const otherParty = (m) => (m.senderId === user.id ? m.receiver : m.sender);
-
-  // Build threads keyed by partnerId + auctionId
-  const threads = messages.reduce((acc, m) => {
-    const partner = m.senderId === user.id ? m.receiverId : m.senderId;
-    const key = `${partner}::${m.auctionId || 'none'}`;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(m);
-    return acc;
-  }, {});
-
-  const threadKeys = Object.keys(threads).sort((a, b) => {
-    const aa = threads[a][0]?.createdAt || 0;
-    const bb = threads[b][0]?.createdAt || 0;
-    return new Date(bb) - new Date(aa);
-  });
-
-  const filteredThreadKeys = threadKeys.filter(key => {
-    if (!search) return true;
-    const thread = threads[key];
-    const latest = thread[0];
-    const partner = otherParty(latest);
-    const term = search.toLowerCase();
-    const name = (partner?.name || partner?.email || '').toLowerCase();
-    const content = (latest?.content || '').toLowerCase();
-    return name.includes(term) || content.includes(term);
-  });
-
-  const openThread = (key) => {
-    const [partnerId, auctionId] = key.split('::');
-    // Ensure partnerId is a Number and auctionId is either null or Number.
-    // This prevents sending string IDs to the backend which can cause
-    // Prisma type errors or unexpected behavior.
-    setSelectedThread({ partnerId: Number(partnerId), auctionId: auctionId === 'none' ? null : Number(auctionId) });
-  };
-
-  const threadKeyForSelected = selectedThread ? `${selectedThread.partnerId}::${selectedThread.auctionId || 'none'}` : null;
-  const currentThreadMessages = selectedThread ? messages.filter(m => {
-    const partner = m.senderId === user.id ? m.receiverId : m.senderId;
-    const matchPartner = String(partner) === String(selectedThread.partnerId);
-    const matchAuction = (selectedThread.auctionId ? String(m.auctionId) === String(selectedThread.auctionId) : !m.auctionId);
-    return matchPartner && matchAuction;
-  }).sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)) : [];
-  const partnerInfo = threadKeyForSelected && threads[threadKeyForSelected] && threads[threadKeyForSelected][0] ? otherParty(threads[threadKeyForSelected][0]) : null;
-
-  const messagesContainerRef = useRef(null);
-  const composerInputRef = useRef(null);
-
-  useEffect(() => {
-    const el = messagesContainerRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [currentThreadMessages.length]);
-
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!selectedThread || !body.trim()) return;
-    try {
-      // Build the payload with normalized numeric IDs. The server expects
-      // numeric `receiverId` and `auctionId` (or null) to match the Prisma schema.
-      const payload = { receiverId: selectedThread.partnerId, content: body };
-      if (selectedThread.auctionId) payload.auctionId = Number(selectedThread.auctionId);
-      const res = await api.post('/messages', payload);
-      setBody('');
-      // prepend new message
-      setMessages(prev => [res.data, ...prev]);
-    } catch (err) {
-      // Surface the full error from the server (if present) so the UI
-      // shows a helpful message. Also log the response body to console
-      // for debugging when developing locally.
-      console.error('Send failed', err, err.response?.data);
-      alert((err.response && (err.response.data?.error || JSON.stringify(err.response.data))) || err.message || 'Send failed');
-    }
-  };
-
-  const markRead = async (msg) => {
-    if (!msg || msg.receiverId !== user.id || msg.isRead) return;
-    try {
-      await api.put(`/messages/${msg.id}/read`);
-      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isRead: true } : m));
-    } catch (err) {
-      console.error('Mark read failed', err);
-    }
-  };
-
-  const handleAdminDelete = async (msgId) => {
-    if (!window.confirm('Delete this message?')) return;
-    try {
-      await api.delete(`/messages/${msgId}`);
-      setMessages(prev => prev.filter(m => m.id !== msgId));
-    } catch (err) {
-      console.error('Delete failed', err);
-      alert('Delete failed');
-    }
-  };
+  // ... [Keep your existing fetchMessages, searchUsers, and socket logic here] ...
 
   return (
-    <div className="messages-wrapper">
-      <aside className="sidebar">
-            <div className="search" style={{ padding: '8px 12px' }}>
-              <input value={search} onChange={e => { const v = e.target.value; setSearch(v); if (v) searchUsers(v); else setUserResults([]); }} placeholder="Search conversations or find user by name" style={{ width: '100%', padding: '8px', borderRadius: 12, border: '1px solid #eef2ff' }} />
-              {searchingUsers && <div style={{ fontSize: 12, color: '#6b7280' }}>Searching...</div>}
-              {userResults.length > 0 && (
-                <ul style={{ listStyle: 'none', padding: 6, margin: 0 }}>
-                  {userResults.map(u => (
-                    <li key={u.id} style={{ padding: 6, cursor: 'pointer' }} onClick={() => { setSelectedThread({ partnerId: u.id, auctionId: null }); setSearch(''); setUserResults([]); setTimeout(()=>composerInputRef.current?.focus(), 100); }}>
-                      <strong>{u.name}</strong> <div style={{ fontSize: 12, color: '#6b7280' }}>{u.email}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-        
-        {loading && <p>Loading...</p>}
-        {!loading && threadKeys.length === 0 && <p>No messages yet.</p>}
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {filteredThreadKeys.map(key => {
-            const thread = threads[key];
-            const latest = thread[0];
-            const partner = otherParty(latest);
-            const unread = thread.some(m => m.receiverId === user.id && !m.isRead);
-            const online = partner?.isOnline;
-            return (
-              <li key={key} className="conversation-item" onClick={() => openThread(key)}>
-                <div style={{ position: 'relative' }}>
-                  <img className="avatar" src={partner?.avatar || partner?.imagePath || `https://i.pravatar.cc/48?u=${partner?.id || partner?.email}`}
-                    onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(partner?.name || partner?.email || 'User')}&size=48&background=E5E7EB&color=000`; }}
-                    alt={partner?.name || 'User'} />
-                  {online && <span style={{ position: 'absolute', right: 2, bottom: 2, width: 12, height: 12, borderRadius: '50%', background: '#34d399', border: '2px solid #fff' }} />}
-                </div>
-                <div className="meta">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong>{partner?.name || partner?.email || `User ${partner?.id || '—'}`}</strong>
-                    <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(latest.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6 }}>
-                    <div className="preview">{latest.content?.slice(0, 80)}</div>
-                    {unread && <div className="unread-badge">{thread.filter(m => m.receiverId === user.id && !m.isRead).length}</div>}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+    <div className='flex h-screen p-6 gap-6'>
+      {/* Sidebar - 3D Magnetic Container */}
+      <aside className='w-1/3 max-w-sm'>
+        <Magnetic3DContainer>
+          <motion.div className='glass-3d-card h-[80vh] p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl overflow-hidden'>
+            <h2 className='text-white font-bold mb-6 tracking-widest uppercase text-sm'>
+              Conversations
+            </h2>
+            {/* Thread List... */}
+          </motion.div>
+        </Magnetic3DContainer>
       </aside>
 
-      <section className="chat">
-        {!selectedThread && <div style={{ padding: '24px' }}>Select a conversation to view messages.</div>}
-        {selectedThread && (
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div className="chat-header">
-              {partnerInfo ? (
-                <>
-                  <img src={partnerInfo?.avatar || partnerInfo?.imagePath || `https://i.pravatar.cc/48?u=${partnerInfo?.id || partnerInfo?.email}`}
-                    onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(partnerInfo?.name || partnerInfo?.email || 'User')}&size=48&background=E5E7EB&color=000`; }}
-                    alt={partnerInfo?.name || 'User'} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '1px solid #eef2ff' }} />
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <strong style={{ fontSize: '15px' }}>{partnerInfo?.name || partnerInfo?.email || `User ${selectedThread.partnerId}`}</strong>
-                    <span style={{ fontSize: '12px', color: '#6b7280' }}>{partnerInfo?.email || ''}</span>
-                  </div>
-                </>
-              ) : (
-                <strong>Conversation with {selectedThread.partnerId}</strong>
-              )}
-            </div>
-            <div ref={messagesContainerRef} className="messages-pane">
-              {currentThreadMessages.map((msg, idx) => {
-                const prev = currentThreadMessages[idx - 1];
-                const showAvatar = msg.senderId !== user.id && (!prev || prev.senderId !== msg.senderId);
-                return (
-                  <div key={msg.id} className={`msg-row ${msg.senderId===user.id ? 'right' : 'left'}`}>
-                    {msg.senderId !== user.id ? (
-                      showAvatar ? (
-                        <img className="avatar" src={msg.sender?.avatar || msg.sender?.imagePath || `https://i.pravatar.cc/48?u=${msg.sender?.id || msg.sender?.email}`}
-                          onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender?.name || msg.sender?.email || 'User')}&size=48&background=E5E7EB&color=000`; }}
-                          alt={msg.sender?.name || 'User'} style={{ width: 36, height: 36 }} />
-                      ) : (
-                        <div style={{ width: 36 }} />
-                      )
-                    ) : <div style={{ width: 36 }} />}
+      {/* Main Chat - 3D Glassmorphic Interface */}
+      <section className='flex-1'>
+        <Magnetic3DContainer>
+          <motion.div
+            className='glass-3d-card h-[80vh] p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl flex flex-col'
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            {selectedThread ? (
+              <>
+                <div className='border-b border-white/10 pb-4 mb-4'>
+                  <h3 className='text-white font-bold'>Chat with Partner</h3>
+                </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: msg.senderId===user.id ? 'flex-end' : 'flex-start' }}>
-                      <div className={`bubble ${msg.senderId===user.id ? 'right' : 'left'}`}>
-                        <div style={{ fontSize: 15, lineHeight: 1.3 }}>{msg.content}</div>
-                      </div>
-                      <div className="msg-meta">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{msg.senderId===user.id ? (msg.isRead ? ' • Read' : ' • Sent') : ''}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                <div
+                  ref={messagesContainerRef}
+                  className='flex-1 overflow-y-auto space-y-4 scrollbar-thin'
+                >
+                  <AnimatePresence>
+                    {currentThreadMessages.map(msg => (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-4 rounded-2xl max-w-[70%] ${
+                          msg.senderId === user.id
+                            ? 'bg-blue-600 ml-auto'
+                            : 'bg-white/10'
+                        }`}
+                      >
+                        <p className='text-sm text-white'>{msg.content}</p>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
 
-            <form onSubmit={handleSend} className="composer">
-              <button type="button" title="Attach" className="icon-btn">📎</button>
-              <button type="button" title="Emoji" className="icon-btn">😊</button>
-              <input ref={composerInputRef} className="input" value={body} onChange={e => setBody(e.target.value)} placeholder="Message" />
-              <button type="submit" style={{ padding: '10px 16px', background: '#0088cc', color: 'white', border: 'none', borderRadius: '20px' }}>Send</button>
-            </form>
-          </div>
-        )}
+                <form onSubmit={handleSend} className='mt-4 flex gap-2'>
+                  <input
+                    className='flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none'
+                    value={body}
+                    onChange={e => setBody(e.target.value)}
+                    placeholder='Type a message...'
+                  />
+                  <button className='bg-blue-600 px-6 py-3 rounded-xl text-white font-bold'>
+                    SEND
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className='flex items-center justify-center h-full text-white/30 italic'>
+                Select a conversation to begin
+              </div>
+            )}
+          </motion.div>
+        </Magnetic3DContainer>
       </section>
-      {/* Assist is provided globally via Topbar/Sidebar */}
     </div>
-  );
-};
-
-export default Messages;
+  )
+}
