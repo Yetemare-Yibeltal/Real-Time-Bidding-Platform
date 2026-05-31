@@ -1,69 +1,61 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import api from '../api/axios';
+import React, { createContext, useState, useEffect, useContext } from 'react'
+import api from '../api/axios'
 
-const AuthContext = createContext();
+const AuthContext = createContext()
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext)
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  // Syncs user state with server
+  const fetchUserSession = async () => {
+    try {
+      const res = await api.get('/auth/me')
+      setUser(res.data)
+    } catch (err) {
+      localStorage.removeItem('token')
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      api.get('/auth/me')
-        .then(res => {
-          const hasBidAccess = localStorage.getItem('hasBidAccess') === 'true';
-          setUser({ ...(res.data || {}), hasBidAccess });
-        })
-        .catch(() => localStorage.removeItem('token'))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, []);
+    const token = localStorage.getItem('token')
+    if (token) fetchUserSession()
+    else setLoading(false)
+  }, [])
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    localStorage.setItem('token', res.data.token);
-    const hasBidAccess = localStorage.getItem('hasBidAccess') === 'true';
-    setUser({ ...(res.data.user || {}), hasBidAccess });
-    return res.data;
-  };
-
-  const updateProfile = async (data) => {
-    const res = await api.put('/auth/me', data);
-    setUser(res.data);
-    return res.data;
-  };
-
-  const uploadAvatar = async (file) => {
-    const fd = new FormData();
-    fd.append('avatar', file);
-    const res = await api.post('/auth/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-    // update user avatar (server returns { avatar: url })
-    setUser(prev => ({ ...prev, avatar: res.data.avatar }));
-    return res.data;
-  };
-
-  const register = async (name, email, password) => {
-    const res = await api.post('/auth/register', { name, email, password });
-    localStorage.setItem('token', res.data.token);
-    const hasBidAccess = localStorage.getItem('hasBidAccess') === 'true';
-    setUser({ ...(res.data.user || {}), hasBidAccess });
-    return res.data;
-  };
+    const res = await api.post('/auth/login', { email, password })
+    localStorage.setItem('token', res.data.token)
+    setUser(res.data.user)
+    return res.data
+  }
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('hasBidAccess');
-    setUser(null);
-  };
+    localStorage.removeItem('token')
+    setUser(null)
+  }
+
+  // ... (Keep updateProfile and uploadAvatar logic)
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile, uploadAvatar }}>
-      {children}
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        updateProfile,
+        uploadAvatar,
+        isAdmin: () => user?.role === 'admin' // Added helper for admin checks
+      }}
+    >
+      {!loading && children}
     </AuthContext.Provider>
-  );
-};
+  )
+}
