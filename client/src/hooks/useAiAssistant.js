@@ -1,23 +1,26 @@
-import { useState } from 'react';
-import api from '../api/axios';
+import { useState, useCallback } from "react";
+import api from "../api/axios";
 
 export default function useAiAssistant() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const getRecommendation = async (item) => {
+  const getRecommendation = useCallback(async (item) => {
     setLoading(true);
     setError(null);
+
     try {
-      const res = await api.post('/ai/recommend-bid', { item });
-      setLoading(false);
+      const res = await api.post("/ai/recommend-bid", { item });
       return res.data;
     } catch (err) {
-      setError(err?.response?.data?.error || err.message || 'AI request failed');
+      const message =
+        err?.response?.data?.error || "AI assistance currently unavailable";
+      setError(message);
+      throw new Error(message);
+    } finally {
       setLoading(false);
-      throw err;
     }
-  };
+  }, []);
 
   return { getRecommendation, loading, error };
 }
