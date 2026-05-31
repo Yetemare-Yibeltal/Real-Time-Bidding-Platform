@@ -1,37 +1,86 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react'
+import { motion } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
+import { useNavigate, Link } from 'react-router-dom'
+import { Magnetic3DContainer } from './Magnetic3DContainer'
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async e => {
+    e.preventDefault()
     try {
-      await login(email, password);
-      navigate('/');
+      await login(email, password)
+      navigate('/')
     } catch (err) {
-      console.error('Login error', err);
-      setError(err.response?.data?.error || err.message || 'Login failed');
+      setError(err.response?.data?.error || err.message || 'Login failed')
     }
-  };
+  }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '100px auto', background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-      <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>Login to BidMaster</h2>
-      {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '12px', marginBottom: '16px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-        <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '12px', marginBottom: '24px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-        <button type="submit" style={{ width: '100%', backgroundColor: '#1e3a8a', color: 'white', padding: '12px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>Login</button>
-      </form>
-      <p style={{ marginTop: '16px', textAlign: 'center' }}>Don't have an account? <Link to="/register" style={{ color: '#2563eb' }}>Register</Link></p>
-    </div>
-  );
-};
+    <div className='flex items-center justify-center min-h-screen'>
+      <Magnetic3DContainer>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className='w-[400px] p-8 rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-2xl shadow-2xl'
+        >
+          <h2 className='text-3xl font-bold text-white mb-8 text-center tracking-tight'>
+            Welcome <span className='gradient-text'>Back</span>
+          </h2>
 
-export default Login;
+          {error && (
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: 'auto' }}
+              className='bg-red-500/20 text-red-200 p-4 rounded-xl mb-6 text-sm border border-red-500/20'
+            >
+              {error}
+            </motion.div>
+          )}
+
+          <form onSubmit={handleSubmit} className='space-y-4'>
+            <input
+              type='email'
+              placeholder='Email Address'
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className='w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-colors'
+            />
+            <input
+              type='password'
+              placeholder='Password'
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              className='w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-colors'
+            />
+            <button
+              type='submit'
+              className='w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98]'
+            >
+              SIGN IN
+            </button>
+          </form>
+
+          <p className='mt-8 text-center text-white/40 text-sm'>
+            Don't have an account?{' '}
+            <Link
+              to='/register'
+              className='text-blue-400 hover:text-blue-300 font-semibold transition-colors'
+            >
+              Register
+            </Link>
+          </p>
+        </motion.div>
+      </Magnetic3DContainer>
+    </div>
+  )
+}
+
+export default Login
