@@ -14,6 +14,7 @@ const Messages = () => {
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(true);
 
+
   const fetchMessages = async () => {
     try {
       setLoading(true);
@@ -96,7 +97,10 @@ const Messages = () => {
 
   const openThread = (key) => {
     const [partnerId, auctionId] = key.split('::');
-    setSelectedThread({ partnerId: Number(partnerId), auctionId: auctionId === 'none' ? null : auctionId });
+    // Ensure partnerId is a Number and auctionId is either null or Number.
+    // This prevents sending string IDs to the backend which can cause
+    // Prisma type errors or unexpected behavior.
+    setSelectedThread({ partnerId: Number(partnerId), auctionId: auctionId === 'none' ? null : Number(auctionId) });
   };
 
   const threadKeyForSelected = selectedThread ? `${selectedThread.partnerId}::${selectedThread.auctionId || 'none'}` : null;
@@ -122,15 +126,20 @@ const Messages = () => {
     e.preventDefault();
     if (!selectedThread || !body.trim()) return;
     try {
+      // Build the payload with normalized numeric IDs. The server expects
+      // numeric `receiverId` and `auctionId` (or null) to match the Prisma schema.
       const payload = { receiverId: selectedThread.partnerId, content: body };
-      if (selectedThread.auctionId) payload.auctionId = selectedThread.auctionId;
+      if (selectedThread.auctionId) payload.auctionId = Number(selectedThread.auctionId);
       const res = await api.post('/messages', payload);
       setBody('');
       // prepend new message
       setMessages(prev => [res.data, ...prev]);
     } catch (err) {
-      console.error('Send failed', err);
-      alert(err.response?.data?.error || 'Send failed');
+      // Surface the full error from the server (if present) so the UI
+      // shows a helpful message. Also log the response body to console
+      // for debugging when developing locally.
+      console.error('Send failed', err, err.response?.data);
+      alert((err.response && (err.response.data?.error || JSON.stringify(err.response.data))) || err.message || 'Send failed');
     }
   };
 
@@ -260,6 +269,7 @@ const Messages = () => {
           </div>
         )}
       </section>
+      {/* Assist is provided globally via Topbar/Sidebar */}
     </div>
   );
 };

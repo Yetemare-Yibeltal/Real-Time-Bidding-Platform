@@ -13,7 +13,10 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       api.get('/auth/me')
-        .then(res => setUser(res.data))
+        .then(res => {
+          const hasBidAccess = localStorage.getItem('hasBidAccess') === 'true';
+          setUser({ ...(res.data || {}), hasBidAccess });
+        })
         .catch(() => localStorage.removeItem('token'))
         .finally(() => setLoading(false));
     } else {
@@ -24,7 +27,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     localStorage.setItem('token', res.data.token);
-    setUser(res.data.user);
+    const hasBidAccess = localStorage.getItem('hasBidAccess') === 'true';
+    setUser({ ...(res.data.user || {}), hasBidAccess });
     return res.data;
   };
 
@@ -46,7 +50,8 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password) => {
     const res = await api.post('/auth/register', { name, email, password });
     localStorage.setItem('token', res.data.token);
-    setUser(res.data.user);
+    const hasBidAccess = localStorage.getItem('hasBidAccess') === 'true';
+    setUser({ ...(res.data.user || {}), hasBidAccess });
     return res.data;
   };
 

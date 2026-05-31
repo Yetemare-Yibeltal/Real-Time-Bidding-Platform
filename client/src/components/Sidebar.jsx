@@ -34,6 +34,7 @@ const Sidebar = ({ showToast }) => {
           <i className="fas fa-sign-out-alt"></i> Logout
         </a>
       </nav>
+      
     </aside>
   );
 };

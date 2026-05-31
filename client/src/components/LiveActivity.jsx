@@ -30,10 +30,8 @@ const LiveActivity = ({ activities = [] }) => {
       <div className="activity-header">
         <h4>Live Bidding Activity</h4>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span className="activity-count">{sample.length}</span>
-          <div className="live-dot" title="Live updates">
-            <i className="fas fa-circle"></i>
-          </div>
+          <div className="live-dot" title="Live updates"><i className="fas fa-circle"></i></div>
+          <span className="activity-count">{activitiesState.length}</span>
         </div>
       </div>
       <ul className="activity-list">
@@ -41,10 +39,14 @@ const LiveActivity = ({ activities = [] }) => {
           <li key={a.id} className="activity-item">
             <div className="activity-avatar">{(a.userName || 'U').split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
             <div className="activity-body">
-              <div className="activity-user">{a.userName}</div>
-              <div className="activity-meta">bid on {a.auctionName} • {a.timeAgo}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <div className="activity-user">{a.userName}</div>
+                  <div className="activity-meta">{a.auctionName ? `on ${a.auctionName}` : ''} • {a.timeAgo}</div>
+                </div>
+                <div className="activity-amount" style={{ color: '#10b981', fontWeight: 700 }}>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(a.amount)}</div>
+              </div>
             </div>
-            <div className="activity-amount">{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(a.amount)}</div>
           </li>
         ))}
       </ul>

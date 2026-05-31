@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
-// Vite exposes env vars via import.meta.env (VITE_ prefix). Fall back to localhost:5001
-let SERVER_URL = 'http://localhost:5001';
+// Vite exposes env vars via import.meta.env (VITE_ prefix). Fall back to localhost:5000
+let SERVER_URL = 'http://localhost:5003';
 try {
   if (import.meta && import.meta.env && import.meta.env.VITE_SERVER_URL) {
     SERVER_URL = import.meta.env.VITE_SERVER_URL.replace(/\/api\/?$/, '');

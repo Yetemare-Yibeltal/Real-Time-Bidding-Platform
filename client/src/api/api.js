@@ -5,5 +5,6 @@ const API = axios.create({
 });
 
 export const fetchAuctions = () => API.get('/auctions');
-export const placeBid = (itemId, userId, amount) => API.post('/auctions/bid', { itemId, userId, amount });
+export const placeBid = (itemId, amount) => API.post(`/auctions/${encodeURIComponent(itemId)}/bid`, { amount });
 export const getHighestBid = (itemId) => API.get(`/auctions/item/${itemId}/highest`);
+export const searchUsers = (q) => API.get(`/users?search=${encodeURIComponent(q)}`);

@@ -29,7 +29,7 @@ export const PaymentProvider = ({ children }) => {
     try {
       // mark pending to give user feedback in modal
       setModal(prev => ({ ...prev, pending: true }));
-      const payload = { amount: fee, currency: 'usd', description: 'Bid access fee', purpose };
+      const payload = { amount: fee, currency: 'usd', description: 'Bid access fee', purpose, itemId: modal.itemId ?? opts.itemId ?? null };
       console.debug('PaymentContext.startCheckout payload:', payload);
       const res = await api.post('/billing/create-session', payload);
       console.debug('PaymentContext.startCheckout response:', res?.data);

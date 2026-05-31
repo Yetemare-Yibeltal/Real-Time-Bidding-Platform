@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useUserData } from './context/UserDataContext';
 import Login from './components/Login';
@@ -19,6 +19,8 @@ import Payments from './components/admin/Payments';
 import OtherAuctionsManager from './components/admin/OtherAuctionsManager';
 import Topbar from './components/Topbar';
 import LiveActivity from './components/LiveActivity';
+import AIChatPortal from './components/AIChatPortal';
+import SearchResults from './pages/SearchResults';
 import { useAuctionSimulator } from './hooks/useAuctionSimulator';
 import { PaymentProvider, usePayment } from './context/PaymentContext';
 import { formatUSD } from './utils/helpers';
@@ -33,6 +35,8 @@ const Toast = ({ message, visible }) => {
 // Sidebar Component (unchanged except added link)
 const Sidebar = ({ showToast, user, logout }) => {
   const location = useLocation();
+
+  
   const menuItems = [
     { name: 'All Auctions', icon: 'store', path: '/' },
     { name: 'My Bids', icon: 'gavel', path: '/my-bids' },
@@ -285,7 +289,18 @@ const AuctionPage = ({ showToast }) => {
   const { user } = useAuth();
   const { addBid, isInWatchlist, addToWatchlist, removeFromWatchlist } = useUserData();
   const { liveItem, otherItems, loading, placeBid, updateItem, refreshAuctions } = useAuctionSimulator();
-  const { openPayment } = usePayment();
+  const { openPayment, startCheckout } = usePayment();
+
+  // Compute a simple activity score for the live item based on bids and views.
+  // Formula: score = bids * 3 + floor(views / 10)
+  const bidsCount = liveItem ? (liveItem.bidCount ?? liveItem.bids?.length ?? 0) : 0;
+  const viewsCount = liveItem ? (liveItem.views ?? 0) : 0;
+  const activityScore = Math.round(bidsCount * 3 + Math.floor(viewsCount / 10));
+  const displayScore = liveItem?.activityScore ?? activityScore;
+
+  useEffect(() => {
+    console.log('DEBUG liveItem:', liveItem);
+  }, [liveItem]);
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -391,7 +406,7 @@ const AuctionPage = ({ showToast }) => {
   };
 
   const BID_FEE_USD = 5.0;
-  const PAY_PER_BID = true; // when true, every bid click triggers a payment for that bid amount
+  const PAY_PER_BID = false; // when true, every bid click triggers a payment for that bid amount
   const handlePlaceBid = async (itemId, amount, isLive = true, bypassPayment = false) => {
     if (!user) { showToast('Please login to bid'); return; }
     const item = isLive ? liveItem : otherItems.find(i => i.id === itemId);
@@ -421,7 +436,14 @@ const AuctionPage = ({ showToast }) => {
           }
         }, 7000);
       } else if (result && result.needPayment) {
-        openPayment(amount, itemId, 'bid_access');
+        // Auto-start checkout when payment required for bidding
+        try {
+          await startCheckout({ fee: amount, purpose: 'bid_access', itemId });
+          return;
+        } catch (e) {
+          // If auto-checkout fails (e.g., network), fall back to opening payment modal
+          openPayment(amount, itemId, 'bid_access');
+        }
       } else {
         showToast(`❌ Bid failed: ${result?.error || 'unknown'}`);
       }
@@ -508,8 +530,7 @@ const AuctionPage = ({ showToast }) => {
 
       {/* Payment modal is provided globally by PaymentProvider */}
 
-      {/* Live Auction Header */}
-      <Topbar user={user} />
+      {/* Live Auction Header (Topbar moved to app level) */}
 
       <div className="live-badge">
         <h2>Live Auction</h2>
@@ -520,6 +541,9 @@ const AuctionPage = ({ showToast }) => {
               <i className="fas fa-pencil-alt"></i> Edit
             </button>
           )}
+          <button className="icon-btn assist-banner" title="Assistant" onClick={() => window.dispatchEvent(new CustomEvent('toggle-assist'))} style={{ padding: '6px 10px', borderRadius: 8, background: '#06b6d4', color: '#fff', border: 'none', cursor: 'pointer' }}>
+            <i className="fas fa-robot" style={{ marginRight: 6 }}></i> Assist
+          </button>
         </div>
       </div>
 
@@ -539,6 +563,14 @@ const AuctionPage = ({ showToast }) => {
                 className="live-image"
                 onError={(e) => { e.target.onerror = null; e.target.src = 'https://picsum.photos/id/1/300/200'; }}
               />
+              <button
+                className={`live-watch-btn ${isInWatchlist(liveItem.id) ? 'active' : ''}`}
+                onClick={() => handleToggleWatchlist(liveItem)}
+                title={isInWatchlist(liveItem.id) ? 'Remove from watchlist' : 'Add to watchlist'}
+              >
+                <i className={`fas fa-heart`}></i>
+              </button>
+              
               {user?.role === 'admin' && (
                 <>
                   <button
@@ -588,6 +620,16 @@ const AuctionPage = ({ showToast }) => {
             </div>
           </div>
         </div>
+
+        {/* Footer meta row for live item: seller / category / bids / views */}
+        <div className="live-meta-row live-meta-footer">
+          <div className="meta-item"><strong>Seller</strong><div className="meta-value">{liveItem.seller || liveItem.sellerName || 'TechWorld'}</div></div>
+          <div className="meta-item"><strong>Category</strong><div className="meta-value">{liveItem.category || 'Electronics'}</div></div>
+          <div className="meta-item"><strong>Bids</strong><div className="meta-value">{liveItem.bidCount ?? liveItem.bids?.length ?? 0}</div></div>
+          <div className="meta-item"><strong>Views</strong><div className="meta-value">{liveItem.views ?? 0}</div></div>
+          <div className="meta-item meta-score"><strong>Score</strong><div className="meta-value">{displayScore}</div></div>
+        </div>
+
       </div>
 
       {/* Other Auction Items section */}
@@ -630,6 +672,14 @@ function App() {
     setTimeout(() => setToast({ message: '', visible: false }), 2800);
   }, []);
 
+  const [showAssist, setShowAssist] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setShowAssist(s => !s);
+    window.addEventListener('toggle-assist', handler);
+    return () => window.removeEventListener('toggle-assist', handler);
+  }, []);
+
   const location = useLocation();
 
   useEffect(() => {
@@ -649,11 +699,24 @@ function App() {
     }
   }, [location.search, location.pathname, showToast]);
 
+  // handle topbar-search events and navigate to /search?q=...
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onSearch = (e) => {
+      const q = e?.detail?.query;
+      if (!q) return;
+      navigate(`/search?q=${encodeURIComponent(q)}`);
+    };
+    window.addEventListener('topbar-search', onSearch);
+    return () => window.removeEventListener('topbar-search', onSearch);
+  }, [navigate]);
+
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div className="app-container">
       <div className="global-accent-bar"></div>
+      <Topbar user={user} />
       <PaymentProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -670,9 +733,11 @@ function App() {
         <Route path="/messages" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Messages /></></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Profile /></></PrivateRoute>} />
         <Route path="/settings" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><Settings /></></PrivateRoute>} />
+        <Route path="/search" element={<PrivateRoute><><Sidebar showToast={showToast} user={user} logout={logout} /><SearchResults /></></PrivateRoute>} />
       </Routes>
       </PaymentProvider>
       <Toast message={toast.message} visible={toast.visible} />
+      <AIChatPortal open={!!showAssist} />
     </div>
   );
 }

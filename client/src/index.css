@@ -83,24 +83,41 @@ body {
 
 /* ===== TOPBAR ===== */
 .topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #cbd5e1 100%);
+  color: #0f1724;
+  border-bottom: 1px solid rgba(15,23,36,0.06);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+  z-index: 1200;
 }
 .topbar-search {
   width: 100%;
   max-width: 720px;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.9rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background-color: var(--bg-input);
+  border: 1px solid rgba(0,0,0,0.06);
+  background-color: rgba(255,255,255,0.9);
+  color: #0f1724;
   font-size: 0.95rem;
 }
 .topbar-right { display:flex; align-items:center; gap:0.75rem; }
-.icon-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 1.05rem; cursor: pointer; }
-.profile-circle img { width:40px; height:40px; border-radius:50%; object-fit:cover; }
+.icon-btn { background: transparent; border: none; color: rgba(0,0,0,0.85); font-size: 1.05rem; cursor: pointer; }
+.icon-btn:hover { color: rgba(0,0,0,0.95); }
+.profile-circle img { width:40px; height:40px; border-radius:50%; object-fit:cover; border: 2px solid rgba(0,0,0,0.06); }
+
+.profile-info { display:flex; align-items:center; gap:0.6rem; margin-right: 1rem; }
+ .topbar-username { color: #374151; font-weight:700; font-size:0.95rem; }
+
+/* Make room for fixed topbar */
+.app-container { padding-top: 64px; }
 
 /* ===== ACTIVITY COLUMN ===== */
 .activity-column {
@@ -124,6 +141,36 @@ body {
 .activity-meta { font-size:0.75rem; color:var(--text-secondary); }
 .activity-amount { margin-left:auto; font-weight:800; color:var(--success); }
 .view-all-btn { width:100%; padding:0.6rem; border-radius:0.6rem; border:none; background:var(--bg-elevated); cursor:pointer; }
+
+/* Notification dropdown and badge */
+.notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+.notif-dropdown {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  width: 300px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(2,6,23,0.2);
+  z-index: 2000;
+  overflow: hidden;
+}
+.notif-header { padding: 8px 12px; font-weight:700; border-bottom:1px solid var(--border); }
+.notif-item { display:flex; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px dashed var(--border); }
+.notif-text { font-size:0.9rem; color:var(--text-primary); }
+.notif-time { font-size:0.75rem; color:var(--text-secondary); }
+.notif-footer { padding:8px; }
 
 /* ===== LAYOUT ===== */
 .app-container {
@@ -314,6 +361,55 @@ body {
   border-radius: 1.5rem;
   box-shadow: 0 20px 30px -12px rgba(0,0,0,0.2);
 }
+
+/* Large watch (heart) overlay on the live image */
+.live-watch-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.95);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.15);
+  transition: transform 0.15s ease, background 0.15s ease;
+  z-index: 30;
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+}
+.live-watch-btn:hover { transform: translateY(-3px); }
+.live-watch-btn.active { background: var(--accent); color: white; }
+.live-watch-btn.active i { color: white; }
+
+/* Live meta row shown below main image (seller/category/bids/views) */
+.live-meta-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.live-meta-row .meta-item { text-align: left; background: transparent; padding: 6px 10px; border-radius: 8px; border: none; min-width: 84px; display:flex; flex-direction:column; }
+.live-meta-row .meta-item strong { display:block; font-size:0.75rem; color:var(--text-muted); font-weight:700; }
+.live-meta-row .meta-value { font-weight:700; color:var(--text-primary); margin-top:6px; }
+
+/* Footer-specific tweaks */
+.live-meta-footer { padding: 12px 20px; border-top: 1px solid var(--border); background: var(--bg-card); display:flex; align-items:center; }
+.live-meta-footer .meta-item { flex: 1; }
+
+/* Score styling */
+.meta-score .meta-value {
+  color: var(--accent);
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
+/* live-meta-row displays below the image as a horizontal footer */
 
 .live-info {
   flex: 1.5;
@@ -1079,4 +1175,6 @@ body {
   height: 100vh;
   font-size: 1.2rem;
   color: var(--text-secondary);
+  /* ensure visible on very dark themes */
+  color: var(--text-secondary, #e6eef8);
 }

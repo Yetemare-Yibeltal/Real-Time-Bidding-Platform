@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 const AuctionBox = ({ item, onBid, isLive, formatUSD }) => {
   const [timeLeft, setTimeLeft] = useState('');
-  const [bidAmount, setBidAmount] = useState(item.currentBid + item.minIncrement);
+  const minNextBid = Number(item.currentBid || 0) + Number(item.minIncrement || 0);
+  const [bidAmount, setBidAmount] = useState(minNextBid);
   const isExpired = new Date(item.endTime) <= new Date();
   const minNextBid = item.currentBid + item.minIncrement;
 
@@ -23,6 +24,8 @@ const AuctionBox = ({ item, onBid, isLive, formatUSD }) => {
   };
 
   useEffect(() => {
+    // keep bid input in sync when auction values change
+    setBidAmount(Number(item.currentBid || 0) + Number(item.minIncrement || 0));
     const timer = setInterval(() => {
       const remaining = new Date(item.endTime) - new Date();
       if (remaining <= 0) {
@@ -81,13 +84,13 @@ const AuctionBox = ({ item, onBid, isLive, formatUSD }) => {
             <input
               type="number"
               value={bidAmount}
-              onChange={(e) => setBidAmount(parseFloat(e.target.value))}
+              onChange={(e) => { const v = parseFloat(e.target.value); setBidAmount(isNaN(v) ? minNextBid : v); }}
               className="bid-input-small"
               step={item.minIncrement}
               min={minNextBid}
             />
             <button
-              onClick={() => onBid(bidAmount)}
+              onClick={() => { if (typeof onBid === 'function') onBid(bidAmount); else console.warn('onBid not provided for AuctionBox', bidAmount); }}
               className="bid-button-small"
             >
               <i className="fas fa-gavel"></i> Bid

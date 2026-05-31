@@ -12,7 +12,8 @@ import { useAuth } from '../context/AuthContext';
 
 const WatchlistAuctionCard = ({ item, onBid, formatUSD, onRemove }) => {
   const [timeLeft, setTimeLeft] = React.useState('');
-  const [bidAmount, setBidAmount] = React.useState(item.currentBid + item.minIncrement);
+  const minNextBid = Number(item.currentBid || 0) + Number(item.minIncrement || 0);
+  const [bidAmount, setBidAmount] = React.useState(minNextBid);
   const isExpired = new Date(item.endTime) <= new Date();
 
   React.useEffect(() => {
@@ -32,10 +33,8 @@ const WatchlistAuctionCard = ({ item, onBid, formatUSD, onRemove }) => {
   }, [item.endTime]);
 
   React.useEffect(() => {
-    setBidAmount(item.currentBid + item.minIncrement);
+    setBidAmount(Number(item.currentBid || 0) + Number(item.minIncrement || 0));
   }, [item.currentBid, item.minIncrement]);
-
-  const minNextBid = item.currentBid + item.minIncrement;
   const urgent = !isExpired && timeLeft !== 'Expired' && timeLeft.split(' ')[0] === '0h';
   const isBiddable = Number.isInteger(Number(item.id));
   const { openPayment } = usePayment();
@@ -98,7 +97,7 @@ const WatchlistAuctionCard = ({ item, onBid, formatUSD, onRemove }) => {
                 min={minNextBid}
                 className="bid-input-small"
               />
-              <button onClick={() => onBid(bidAmount)} className="bid-button-small">
+              <button onClick={() => { if (typeof onBid === 'function') onBid(bidAmount); else console.warn('onBid not provided for WatchlistAuctionCard', bidAmount); }} className="bid-button-small">
                 <i className="fas fa-gavel"></i> Bid
               </button>
             </div>
@@ -122,7 +121,7 @@ const WatchlistAuctionCard = ({ item, onBid, formatUSD, onRemove }) => {
 
 const Watchlist = () => {
   const { user } = useAuth();
-  const { watchlist, removeFromWatchlist } = useUserData();
+  const { watchlist, removeFromWatchlist, addBid } = useUserData();
   const { placeBid, updateItem } = useAuctionSimulator();
   const { openPayment } = usePayment();
 
@@ -132,6 +131,8 @@ const Watchlist = () => {
     try {
       const result = await placeBid(item.id, amount);
       if (result && result.success) {
+        // record bid in user's local bid history
+        try { addBid({ itemId: item.id, itemName: item.name, amount }); } catch (e) { console.warn('addBid failed', e); }
         alert(`✅ You bid ${formatUSD(amount)} on ${item.name}!`);
         setTimeout(() => {
           if (item.active && (item.endTime - Date.now()) > 0) {
