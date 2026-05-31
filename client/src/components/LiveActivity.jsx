@@ -1,60 +1,84 @@
-import React, { useEffect, useState } from 'react';
-import socket from '../socket/socket';
+import React, { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import socket from '../socket/socket'
+import { Magnetic3DContainer } from './Magnetic3DContainer'
 
 const LiveActivity = ({ activities = [] }) => {
-  // activities: [{id, userName, amount, timeAgo}]
-  const sample = activities.length ? activities : [
-    { id: 1, userName: 'John Doe', amount: 1250, timeAgo: '2s' },
-    { id: 2, userName: 'Sarah K.', amount: 1200, timeAgo: '30s' },
-    { id: 3, userName: 'Alex M.', amount: 1150, timeAgo: '1m' },
-    { id: 4, userName: 'Priya W.', amount: 1100, timeAgo: '2m' },
-  ];
-
-  const [activitiesState, setActivities] = useState(sample);
+  const [activitiesState, setActivities] = useState(activities)
 
   useEffect(() => {
-    const handler = (payload) => {
-      const userName = payload.user?.name || 'Anonymous';
-      const auctionName = payload.auction?.name || `#${payload.itemId}`;
-      const amount = payload.newBid ?? payload.amount ?? 0;
-      const timeAgo = 'now';
-      const entry = { id: Date.now(), userName, amount, timeAgo, auctionName };
-      setActivities(prev => [entry, ...prev].slice(0, 50));
-    };
-    socket.on('live_activity', handler);
-    return () => { socket.off('live_activity', handler); };
-  }, []);
+    const handler = payload => {
+      const entry = {
+        id: Date.now(),
+        userName: payload.user?.name || 'Anonymous',
+        auctionName: payload.auction?.name || `#${payload.itemId}`,
+        amount: payload.newBid ?? payload.amount ?? 0,
+        timeAgo: 'now'
+      }
+      setActivities(prev => [entry, ...prev].slice(0, 50))
+    }
+    socket.on('live_activity', handler)
+    return () => socket.off('live_activity', handler)
+  }, [])
 
   return (
-    <aside className="activity-column">
-      <div className="activity-header">
-        <h4>Live Bidding Activity</h4>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div className="live-dot" title="Live updates"><i className="fas fa-circle"></i></div>
-          <span className="activity-count">{activitiesState.length}</span>
+    <Magnetic3DContainer>
+      <motion.aside
+        className='glass-3d-card w-full max-w-sm p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl overflow-hidden'
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+      >
+        <div className='flex justify-between items-center mb-6'>
+          <h4 className='text-white/80 font-bold tracking-widest uppercase text-xs'>
+            Live Bidding
+          </h4>
+          <div className='flex items-center gap-2'>
+            <span className='relative flex h-2 w-2'>
+              <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75'></span>
+              <span className='relative inline-flex rounded-full h-2 w-2 bg-red-500'></span>
+            </span>
+            <span className='text-white/40 text-[10px] font-mono'>
+              {activitiesState.length}
+            </span>
+          </div>
         </div>
-      </div>
-      <ul className="activity-list">
-        {activitiesState.map(a => (
-          <li key={a.id} className="activity-item">
-            <div className="activity-avatar">{(a.userName || 'U').split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-            <div className="activity-body">
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                <div>
-                  <div className="activity-user">{a.userName}</div>
-                  <div className="activity-meta">{a.auctionName ? `on ${a.auctionName}` : ''} • {a.timeAgo}</div>
-                </div>
-                <div className="activity-amount" style={{ color: '#10b981', fontWeight: 700 }}>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(a.amount)}</div>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="activity-footer">
-        <button className="view-all-btn">View All Activity</button>
-      </div>
-    </aside>
-  );
-};
 
-export default LiveActivity;
+        <ul className='space-y-4 h-[400px] overflow-y-auto pr-2 scrollbar-thin'>
+          <AnimatePresence initial={false}>
+            {activitiesState.map(a => (
+              <motion.li
+                key={a.id}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className='bg-white/5 p-3 rounded-xl border border-white/5 flex gap-3 items-center'
+              >
+                <div className='w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-[10px] text-blue-300 font-bold'>
+                  {(a.userName || 'U')
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')}
+                </div>
+                <div className='flex-1'>
+                  <p className='text-xs text-white font-semibold'>
+                    {a.userName}
+                  </p>
+                  <p className='text-[10px] text-white/40'>
+                    on {a.auctionName}
+                  </p>
+                </div>
+                <p className='text-emerald-400 font-mono font-bold text-xs'>
+                  {new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD'
+                  }).format(a.amount)}
+                </p>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ul>
+      </motion.aside>
+    </Magnetic3DContainer>
+  )
+}
+
+export default LiveActivity
