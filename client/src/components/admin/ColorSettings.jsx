@@ -1,52 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
+import { EnhancedCard } from '../EnhancedCard'
 
 const ColorSettings = () => {
-  const [accentColor, setAccentColor] = useState(localStorage.getItem('appAccentColor') || '#3b82f6');
+  const [accentColor, setAccentColor] = useState(
+    localStorage.getItem('appAccentColor') || '#3b82f6'
+  )
 
   useEffect(() => {
-    // Apply the color to CSS variables on the root element
-    document.documentElement.style.setProperty('--accent', accentColor);
-    // Also update hover variant (optional: make it slightly darker)
-    const darker = shadeColor(accentColor, -20);
-    document.documentElement.style.setProperty('--accent-hover', darker);
-    localStorage.setItem('appAccentColor', accentColor);
-  }, [accentColor]);
+    document.documentElement.style.setProperty('--accent', accentColor)
+    localStorage.setItem('appAccentColor', accentColor)
+  }, [accentColor])
 
-  // Helper to darken/lighten a hex color
-  const shadeColor = (color, percent) => {
-    let R = parseInt(color.substring(1,3), 16);
-    let G = parseInt(color.substring(3,5), 16);
-    let B = parseInt(color.substring(5,7), 16);
-    R = Math.min(255, Math.max(0, R + (R * percent) / 100));
-    G = Math.min(255, Math.max(0, G + (G * percent) / 100));
-    B = Math.min(255, Math.max(0, B + (B * percent) / 100));
-    return `rgb(${R}, ${G}, ${B})`;
-  };
-
-  const resetColor = () => {
-    setAccentColor('#3b82f6'); // default blue
-  };
+  const resetColor = () => setAccentColor('#3b82f6')
 
   return (
-    <div className="settings-card" style={{ maxWidth: '500px', marginTop: '20px' }}>
-      <h3 style={{ marginBottom: '16px' }}>🎨 Color Settings (Admin only)</h3>
-      <label style={{ display: 'block', marginBottom: '8px' }}>Primary Accent Color</label>
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <input
-          type="color"
-          value={accentColor}
-          onChange={(e) => setAccentColor(e.target.value)}
-          style={{ width: '60px', height: '40px', cursor: 'pointer' }}
-        />
-        <span style={{ fontFamily: 'monospace' }}>{accentColor}</span>
-        <button onClick={resetColor} className="theme-btn">Reset to Default</button>
-      </div>
-      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px' }}>
-        This color will be used for buttons, active links, hover effects, and accent borders.
-      </p>
-      <div style={{ marginTop: '16px', backgroundColor: 'var(--accent)', width: '100%', height: '8px', borderRadius: '4px' }}></div>
-    </div>
-  );
-};
+    <EnhancedCard className='max-w-md mt-6 bg-slate-900/60 border-white/5'>
+      <h3 className='text-white font-bold mb-4 flex items-center gap-2'>
+        <i className='fas fa-palette text-blue-400'></i> Theme Configuration
+      </h3>
 
-export default ColorSettings;
+      <div className='flex items-center gap-4'>
+        <input
+          type='color'
+          value={accentColor}
+          onChange={e => setAccentColor(e.target.value)}
+          className='w-12 h-12 rounded-xl cursor-pointer bg-transparent border-0'
+        />
+        <div className='flex-1'>
+          <span className='font-mono text-white/70'>{accentColor}</span>
+          <p className='text-[10px] text-white/30 uppercase tracking-widest'>
+            Primary Accent
+          </p>
+        </div>
+        <button
+          onClick={resetColor}
+          className='text-xs text-white/40 hover:text-white transition-colors'
+        >
+          RESET
+        </button>
+      </div>
+
+      <div
+        className='mt-6 w-full h-1 rounded-full transition-colors duration-500'
+        style={{ backgroundColor: accentColor }}
+      />
+    </EnhancedCard>
+  )
+}
+
+export default ColorSettings
