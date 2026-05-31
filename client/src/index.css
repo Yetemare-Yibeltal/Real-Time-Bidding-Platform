@@ -1192,3 +1192,22 @@ body {
     background-position: 200% center;
   }
 }
+/* Enable wide-screen comfort */
+.main-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 350px; /* Sidebar | Content | Activity Feed */
+  gap: 2rem;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* Fluid Typography */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.05em;
+  background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
