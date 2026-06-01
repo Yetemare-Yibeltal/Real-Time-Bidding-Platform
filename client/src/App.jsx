@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Messages } from './components/Messages'
 
 // Contexts & Hooks
 import { useAuth } from './context/AuthContext'

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Messages } from './components/Messages'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../api/axios'
 import socket, { onNewMessage } from '../socket/socket'
