@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import api from '../../api/axios'
-import { EnhancedCard } from './EnhancedCard'
-import { Magnetic3DContainer } from './Magnetic3DContainer'
+// Corrected: Go up one level to find the components in the parent folder
+import { EnhancedCard } from '../EnhancedCard'
+import { Magnetic3DContainer } from '../Magnetic3DContainer'
 
 export default function Billing () {
   const [amount, setAmount] = useState('5.00')
