@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Syncs user state with server
   const fetchUserSession = async () => {
     try {
       const res = await api.get('/auth/me')
@@ -24,8 +23,11 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (token) fetchUserSession()
-    else setLoading(false)
+    if (token) {
+      fetchUserSession()
+    } else {
+      setLoading(false)
+    }
   }, [])
 
   const login = async (email, password) => {
@@ -35,26 +37,45 @@ export const AuthProvider = ({ children }) => {
     return res.data
   }
 
+  const register = async userData => {
+    const res = await api.post('/auth/register', userData)
+    localStorage.setItem('token', res.data.token)
+    setUser(res.data.user)
+    return res.data
+  }
+
+  const updateProfile = async data => {
+    const res = await api.put('/users/profile', data)
+    setUser(res.data)
+    return res.data
+  }
+
+  const uploadAvatar = async formData => {
+    const res = await api.post('/users/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    setUser(res.data)
+    return res.data
+  }
+
   const logout = () => {
     localStorage.removeItem('token')
     setUser(null)
   }
 
-  // ... (Keep updateProfile and uploadAvatar logic)
+  const value = {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    updateProfile,
+    uploadAvatar,
+    isAdmin: () => user?.role === 'admin'
+  }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        register,
-        logout,
-        updateProfile,
-        uploadAvatar,
-        isAdmin: () => user?.role === 'admin' // Added helper for admin checks
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   )
