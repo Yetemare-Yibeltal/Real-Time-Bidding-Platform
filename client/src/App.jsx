@@ -1,27 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 
-// Contexts
+// Contexts & Hooks
 import { useAuth } from './context/AuthContext'
-import { useUserData } from './context/UserDataContext'
 import { PaymentProvider } from './context/PaymentContext'
 
-// Hooks & Utils
-import { useAuctionSimulator } from './hooks/useAuctionSimulator'
-import { formatUSD } from './utils/helpers'
-import api from './api/axios'
-
-// Layout & UI Components
-import Topbar from './components/Topbar'
-import Sidebar from './components/Sidebar'
-import Toast from './components/Toast'
-import AIChatPortal from './components/AIChatPortal'
-
-// Page Components
+// Components & Pages
 import Login from './components/Login'
 import Register from './components/Register'
 import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
+import Sidebar from './components/Sidebar'
+import Topbar from './components/Topbar'
+import Toast from './components/Toast' // Assuming you separate this
+import AIChatPortal from './components/AIChatPortal'
+
+// Routes Imports
 import AuctionPage from './pages/AuctionPage'
 import MyBids from './components/MyBids'
 import Watchlist from './components/Watchlist'
@@ -29,14 +23,26 @@ import Messages from './components/Messages'
 import Profile from './components/Profile'
 import Settings from './components/Settings'
 import SearchResults from './pages/SearchResults'
-
-// Admin Components
 import AdminDashboard from './components/admin/AdminDashboard'
 import ManageUsers from './components/admin/ManageUsers'
 import ManageAuctions from './components/admin/ManageAuctions'
 import OtherAuctionsManager from './components/admin/OtherAuctionsManager'
 import Billing from './components/admin/Billing'
 import Payments from './components/admin/Payments'
+
+/**
+ * Layout Wrapper: Centralizes the Sidebar and Main structure.
+ * This replaces your manual repetition on every route.
+ */
+const AppLayout = ({ children, user, logout, showToast }) => (
+  <div
+    className='layout-wrapper'
+    style={{ display: 'flex', minHeight: '100vh' }}
+  >
+    <Sidebar showToast={showToast} user={user} logout={logout} />
+    <main style={{ flex: 1, padding: '20px' }}>{children}</main>
+  </div>
+)
 
 function App () {
   const { user, logout, loading } = useAuth()
@@ -50,41 +56,47 @@ function App () {
     setTimeout(() => setToast({ message: '', visible: false }), 2800)
   }, [])
 
-  // Global Event Listeners
+  // Global Event Listener: Toggle Assist
   useEffect(() => {
-    const handleAssist = () => setShowAssist(s => !s)
-    const handleSearch = e =>
-      navigate(`/search?q=${encodeURIComponent(e?.detail?.query || '')}`)
+    const handler = () => setShowAssist(s => !s)
+    window.addEventListener('toggle-assist', handler)
+    return () => window.removeEventListener('toggle-assist', handler)
+  }, [])
 
-    window.addEventListener('toggle-assist', handleAssist)
-    window.addEventListener('topbar-search', handleSearch)
-
-    return () => {
-      window.removeEventListener('toggle-assist', handleAssist)
-      window.removeEventListener('topbar-search', handleSearch)
+  // Handle Query Params (Payment Success/Cancel)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const checkout = params.get('checkout')
+    if (checkout === 'success') {
+      showToast('✅ Payment successful')
+      window.history.replaceState({}, document.title, location.pathname)
+      setTimeout(() => window.location.reload(), 1000)
+    } else if (checkout === 'cancel') {
+      showToast('❌ Payment canceled')
+      window.history.replaceState({}, document.title, location.pathname)
     }
-  }, [navigate])
+  }, [location.search, showToast])
 
-  if (loading) return <div className='loading'>Initializing System...</div>
+  if (loading) return <div className='loading'>Initializing...</div>
 
   return (
     <div className='app-container'>
       <PaymentProvider>
-        {/* Only show global UI if authenticated */}
+        <div className='global-accent-bar'></div>
         {user && <Topbar user={user} />}
 
         <Routes>
           <Route path='/login' element={<Login />} />
           <Route path='/register' element={<Register />} />
 
-          {/* Protected Main Routes */}
+          {/* Protected Routes wrapped in AppLayout */}
           <Route
             path='/'
             element={
               <PrivateRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <AuctionPage showToast={showToast} />
-                </Layout>
+                </AppLayout>
               </PrivateRoute>
             }
           />
@@ -92,9 +104,9 @@ function App () {
             path='/my-bids'
             element={
               <PrivateRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <MyBids />
-                </Layout>
+                </AppLayout>
               </PrivateRoute>
             }
           />
@@ -102,9 +114,9 @@ function App () {
             path='/watchlist'
             element={
               <PrivateRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <Watchlist />
-                </Layout>
+                </AppLayout>
               </PrivateRoute>
             }
           />
@@ -112,9 +124,9 @@ function App () {
             path='/messages'
             element={
               <PrivateRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <Messages />
-                </Layout>
+                </AppLayout>
               </PrivateRoute>
             }
           />
@@ -122,9 +134,9 @@ function App () {
             path='/profile'
             element={
               <PrivateRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <Profile />
-                </Layout>
+                </AppLayout>
               </PrivateRoute>
             }
           />
@@ -132,9 +144,9 @@ function App () {
             path='/settings'
             element={
               <PrivateRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <Settings />
-                </Layout>
+                </AppLayout>
               </PrivateRoute>
             }
           />
@@ -142,19 +154,19 @@ function App () {
             path='/search'
             element={
               <PrivateRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <SearchResults />
-                </Layout>
+                </AppLayout>
               </PrivateRoute>
             }
           />
 
-          {/* Admin Protected Routes */}
+          {/* Admin Routes */}
           <Route
             path='/admin/*'
             element={
               <AdminRoute>
-                <Layout user={user} logout={logout} showToast={showToast}>
+                <AppLayout user={user} logout={logout} showToast={showToast}>
                   <Routes>
                     <Route path='' element={<AdminDashboard />} />
                     <Route path='users' element={<ManageUsers />} />
@@ -166,27 +178,17 @@ function App () {
                     <Route path='billing' element={<Billing />} />
                     <Route path='payments' element={<Payments />} />
                   </Routes>
-                </Layout>
+                </AppLayout>
               </AdminRoute>
             }
           />
         </Routes>
 
-        {showAssist && <AIChatPortal onClose={() => setShowAssist(false)} />}
         <Toast message={toast.message} visible={toast.visible} />
+        <AIChatPortal open={showAssist} onClose={() => setShowAssist(false)} />
       </PaymentProvider>
     </div>
   )
 }
-
-// Layout wrapper keeps the Sidebar and Main Content structure uniform
-const Layout = ({ children, user, logout, showToast }) => (
-  <div className='layout-wrapper' style={{ display: 'flex', width: '100%' }}>
-    <Sidebar user={user} logout={logout} showToast={showToast} />
-    <main className='main-content' style={{ flex: 1 }}>
-      {children}
-    </main>
-  </div>
-)
 
 export default App
