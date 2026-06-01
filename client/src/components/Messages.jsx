@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Messages } from './components/Messages'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../api/axios'
 import socket, { onNewMessage } from '../socket/socket'
@@ -13,7 +12,19 @@ const Messages = () => {
   const [body, setBody] = useState('')
   const messagesContainerRef = useRef(null)
 
-  // ... [Keep your existing fetchMessages, searchUsers, and socket logic here] ...
+  // Example: Filter messages based on selected thread
+  const currentThreadMessages = messages.filter(
+    msg => msg.threadId === selectedThread
+  )
+
+  const handleSend = async e => {
+    e.preventDefault()
+    if (!body.trim()) return
+
+    // Logic for sending message via API or Socket goes here
+    console.log('Sending message:', body)
+    setBody('')
+  }
 
   return (
     <div className='flex h-screen p-6 gap-6'>
@@ -24,7 +35,7 @@ const Messages = () => {
             <h2 className='text-white font-bold mb-6 tracking-widest uppercase text-sm'>
               Conversations
             </h2>
-            {/* Thread List... */}
+            {/* Thread List would be mapped here */}
           </motion.div>
         </Magnetic3DContainer>
       </aside>
@@ -54,7 +65,7 @@ const Messages = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={`p-4 rounded-2xl max-w-[70%] ${
-                          msg.senderId === user.id
+                          msg.senderId === user?.id
                             ? 'bg-blue-600 ml-auto'
                             : 'bg-white/10'
                         }`}
@@ -72,7 +83,10 @@ const Messages = () => {
                     onChange={e => setBody(e.target.value)}
                     placeholder='Type a message...'
                   />
-                  <button className='bg-blue-600 px-6 py-3 rounded-xl text-white font-bold'>
+                  <button
+                    type='submit'
+                    className='bg-blue-600 px-6 py-3 rounded-xl text-white font-bold'
+                  >
                     SEND
                   </button>
                 </form>
@@ -88,4 +102,5 @@ const Messages = () => {
     </div>
   )
 }
+
 export default Messages
