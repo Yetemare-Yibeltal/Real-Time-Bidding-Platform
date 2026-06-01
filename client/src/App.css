@@ -1,12 +1,11 @@
 /* ===== THEME VARIABLES ===== */
 :root {
-  /* Glassmorphic light theme */
   --bg-body: #f3f4f6;
-  --bg-sidebar: rgba(255, 255, 255, 0.7);
-  --bg-card: rgba(255, 255, 255, 0.8);
-  --bg-elevated: rgba(249, 250, 251, 0.8);
-  --bg-input: rgba(255, 255, 255, 0.9);
-  --border: rgba(229, 231, 235, 0.5);
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-elevated: #f9fafb;
+  --bg-input: #ffffff;
+  --border: #e5e7eb;
   --text-primary: #111827;
   --text-secondary: #4b5563;
   --text-muted: #6b7280;
@@ -21,19 +20,20 @@
 
 body.dark {
   --bg-body: #0a0a0a;
-  --bg-sidebar: rgba(15, 15, 15, 0.7);
-  --bg-card: rgba(25, 25, 25, 0.6);
-  --bg-elevated: rgba(26, 26, 26, 0.6);
-  --bg-input: rgba(5, 5, 5, 0.8);
-  --border: rgba(255, 255, 255, 0.05);
+  --bg-sidebar: #0f0f0f;
+  --bg-card: #111111;
+  --bg-elevated: #1a1a1a;
+  --bg-input: #050505;
+  --border: #2a2a2a;
   --text-primary: #ffffff;
   --text-secondary: #b0b0b0;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
+  --danger: #ef4444;
   --star-empty: #4b5563;
 }
 
-/* ===== BASE STYLES ===== */
+/* Base resets & Glassmorphism */
 * {
   margin: 0;
   padding: 0;
@@ -44,108 +44,159 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-body);
   color: var(--text-primary);
-  transition: background-color 0.3s, color 0.3s;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* ===== GLASS UTILITIES ===== */
-.glass-effect {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background-color: var(--bg-card);
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--border);
 }
 
-/* ===== LAYOUT ===== */
+/* Sidebar & Layout */
 .app-container {
   display: flex;
   min-height: 100vh;
 }
-
 .sidebar {
   width: 280px;
+  background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  z-index: 10;
-  @extend .glass-effect;
+}
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.sidebar-nav a:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--accent);
 }
 
+/* Main Content & Live Badge */
 .main-content {
   flex: 1;
-  padding: 2rem;
+  padding: 1.5rem 2rem;
   overflow-y: auto;
 }
+.live-badge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.update-indicator {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: var(--success);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
-/* ===== CARDS & COMPONENTS ===== */
+/* Cards & Responsive Logic */
 .live-card,
 .auction-card {
-  @extend .glass-effect;
+  background-color: var(--bg-card);
   border-radius: 1rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
-    0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.live-flex {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+@media (min-width: 768px) {
+  .live-flex {
+    flex-direction: row;
+    padding: 2rem;
+  }
+  .grid-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .grid-container {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
-.auction-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+/* Timer, Bids & Inputs */
+.right-timer {
+  background-color: var(--bg-elevated);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid var(--border);
 }
-
-/* ===== BUTTONS & INPUTS ===== */
 .bid-button,
 .bid-button-small {
   background-color: var(--accent);
   color: white;
-  border-radius: 0.5rem;
   border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
-
-.bid-button:hover {
-  background-color: var(--accent-hover);
-}
-
-input {
+.bid-input-group input {
   background-color: var(--bg-input);
   border: 1px solid var(--border);
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
   border-radius: 0.5rem;
-  color: var(--text-primary);
 }
 
-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-/* ===== ANIMATIONS & TOASTS ===== */
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.urgent {
-  color: var(--danger);
-  animation: pulse 1s infinite;
-}
-
+/* Toasts & Animations */
 .toast {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  padding: 1rem 1.5rem;
-  border-radius: 0.75rem;
-  z-index: 100;
-  @extend .glass-effect;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  bottom: 1.25rem;
+  right: 1.25rem;
+  background-color: var(--bg-card);
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  z-index: 50;
+  animation: fadeInOut 2.8s ease;
+}
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.6;
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+}
+.urgent {
+  animation: pulse 1s infinite;
 }
