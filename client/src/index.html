@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- SEO Meta Tags -->
+    <!-- SEO & Metadata -->
     <title>BidMaster | Premium Online Auction Platform</title>
     <meta name="description" content="BidMaster - Experience high-performance, real-time online auctions with a modern, glassmorphic design interface." />
     <meta name="theme-color" content="#0ea5a3" />
@@ -12,17 +12,17 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-    <!-- External Styles & Scripts -->
+    <!-- External Assets -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     
-    <!-- Preload fonts to prevent layout shift -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
+    <!-- Styles -->
     <style>
-      /* Keep your pulse animation here for urgent items */
       .timer-urgent { animation: pulse 1s infinite; }
       @keyframes pulse {
         0% { opacity: 1; }
@@ -31,8 +31,13 @@
       }
     </style>
   </head>
+  
   <body class="bg-[#05070a] text-white">
+    <!-- Application Roots -->
     <div id="root"></div>
+    <div id="ai-assist-root"></div>
+    
+    <!-- Main Script -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
