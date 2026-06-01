@@ -1,82 +1,37 @@
-import React, { createContext, useState, useEffect, useContext } from 'react'
+import React, { useEffect, useState } from 'react'
 import api from '../api/axios'
+import { EnhancedCard } from './EnhancedCard'
 
-const AuthContext = createContext()
+export default function Watchlist () {
+  const [items, setItems] = useState([])
 
-export const useAuth = () => useContext(AuthContext)
+  useEffect(() => {
+    fetchWatchlist()
+  }, [])
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  const fetchUserSession = async () => {
+  const fetchWatchlist = async () => {
     try {
-      const res = await api.get('/auth/me')
-      setUser(res.data)
+      const res = await api.get('/watchlist')
+      setItems(res.data)
     } catch (err) {
-      localStorage.removeItem('token')
-      setUser(null)
-    } finally {
-      setLoading(false)
+      console.error('Failed to fetch watchlist', err)
     }
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) fetchUserSession()
-    else setLoading(false)
-  }, [])
-
-  const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password })
-    localStorage.setItem('token', res.data.token)
-    setUser(res.data.user)
-    return res.data
-  }
-
-  // ADDED: Missing Register Function
-  const register = async userData => {
-    const res = await api.post('/auth/register', userData)
-    localStorage.setItem('token', res.data.token)
-    setUser(res.data.user)
-    return res.data
-  }
-
-  // ADDED: Missing Update Profile Function
-  const updateProfile = async data => {
-    const res = await api.put('/users/profile', data)
-    setUser(res.data)
-    return res.data
-  }
-
-  // ADDED: Missing Upload Avatar Function
-  const uploadAvatar = async formData => {
-    const res = await api.post('/users/avatar', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    setUser(res.data)
-    return res.data
-  }
-
-  const logout = () => {
-    localStorage.removeItem('token')
-    setUser(null)
-  }
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        register,
-        logout,
-        updateProfile,
-        uploadAvatar,
-        isAdmin: () => user?.role === 'admin'
-      }}
-    >
-      {!loading && children}
-    </AuthContext.Provider>
+    <div className='p-6'>
+      <h2 className='text-3xl font-bold text-white mb-6'>Your Watchlist</h2>
+      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+        {items.map(item => (
+          <EnhancedCard key={item.id} className='p-4'>
+            <h3 className='text-white font-bold'>{item.name}</h3>
+            <p className='text-white/60'>Current Bid: ${item.currentBid}</p>
+          </EnhancedCard>
+        ))}
+        {items.length === 0 && (
+          <p className='text-white/40'>No items in your watchlist.</p>
+        )}
+      </div>
+    </div>
   )
 }
