@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 
 // Contexts & Hooks
-import { useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
 import { PaymentProvider } from './context/PaymentContext'
 
 // Components & Pages
@@ -14,7 +14,7 @@ import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import Toast from './components/Toast'
 import AIChatPortal from './components/AIChatPortal'
-import Messages from './components/Messages' // Cleaned: Single import
+import Messages from './components/Messages' 
 import Profile from './components/Profile'
 import Settings from './components/Settings'
 import MyBids from './components/MyBids'
