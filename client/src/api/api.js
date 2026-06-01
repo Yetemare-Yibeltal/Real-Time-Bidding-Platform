@@ -1,7 +1,6 @@
 import axios from "axios";
 
-// Standardize on one port (e.g., 5003, or use your environment variable)
-const BASE = import.meta.env.VITE_SERVER_URL || "http://localhost:5003/api";
+const BASE = import.meta.env.VITE_SERVER_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: BASE,
@@ -10,7 +9,6 @@ const api = axios.create({
 
 // Unified Interceptor
 api.interceptors.request.use((config) => {
-  // Check both storage keys if you've been using two different ones
   const token =
     localStorage.getItem("token") ||
     JSON.parse(localStorage.getItem("profile"))?.token;
@@ -20,7 +18,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Unified Response Interceptor
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -29,9 +26,16 @@ api.interceptors.response.use(
       localStorage.removeItem("profile");
       window.location.href = "/login";
     }
-    console.error("API Error:", err.response?.data || err.message);
     return Promise.reject(err);
   },
 );
 
+// ADDED: Export the functions here so you can import them elsewhere
+export const fetchAuctions = () => api.get("/auctions");
+export const placeBid = (itemId, amount) =>
+  api.post(`/auctions/${itemId}/bid`, { amount });
+export const searchUsers = (q) =>
+  api.get(`/users?search=${encodeURIComponent(q)}`);
+
+// Default export remains the axios instance
 export default api;
