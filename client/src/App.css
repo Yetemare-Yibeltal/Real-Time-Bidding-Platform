@@ -200,3 +200,7 @@ body {
 .urgent {
   animation: pulse 1s infinite;
 }
+#root {
+  min-height: 100vh;
+  background-color: #0f172a; /* Slate-900 color to match your theme */
+}
