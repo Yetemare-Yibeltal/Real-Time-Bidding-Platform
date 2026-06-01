@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { Messages } from './components/Messages'
 
 // Contexts & Hooks
 import { useAuth } from './context/AuthContext'
@@ -13,17 +12,19 @@ import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
-import Toast from './components/Toast' // Assuming you separate this
+import Toast from './components/Toast'
 import AIChatPortal from './components/AIChatPortal'
-
-// Routes Imports
-import AuctionPage from './pages/AuctionPage'
-import MyBids from './components/MyBids'
-import Watchlist from './components/Watchlist'
-import Messages from './components/Messages'
+import Messages from './components/Messages' // Cleaned: Single import
 import Profile from './components/Profile'
 import Settings from './components/Settings'
+import MyBids from './components/MyBids'
+import Watchlist from './components/Watchlist'
+
+// Pages
+import AuctionPage from './pages/AuctionPage'
 import SearchResults from './pages/SearchResults'
+
+// Admin Components
 import AdminDashboard from './components/admin/AdminDashboard'
 import ManageUsers from './components/admin/ManageUsers'
 import ManageAuctions from './components/admin/ManageAuctions'
@@ -33,7 +34,6 @@ import Payments from './components/admin/Payments'
 
 /**
  * Layout Wrapper: Centralizes the Sidebar and Main structure.
- * This replaces your manual repetition on every route.
  */
 const AppLayout = ({ children, user, logout, showToast }) => (
   <div
@@ -49,7 +49,6 @@ function App () {
   const { user, logout, loading } = useAuth()
   const [toast, setToast] = useState({ message: '', visible: false })
   const [showAssist, setShowAssist] = useState(false)
-  const navigate = useNavigate()
   const location = useLocation()
 
   const showToast = useCallback(msg => {
@@ -64,7 +63,7 @@ function App () {
     return () => window.removeEventListener('toggle-assist', handler)
   }, [])
 
-  // Handle Query Params (Payment Success/Cancel)
+  // Handle Query Params
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const checkout = params.get('checkout')
@@ -90,7 +89,7 @@ function App () {
           <Route path='/login' element={<Login />} />
           <Route path='/register' element={<Register />} />
 
-          {/* Protected Routes wrapped in AppLayout */}
+          {/* Protected Routes */}
           <Route
             path='/'
             element={
