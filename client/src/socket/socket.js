@@ -1,35 +1,34 @@
-import { io } from 'socket.io-client';
+import { io } from "socket.io-client";
 
-// Vite exposes env vars via import.meta.env (VITE_ prefix). Fall back to localhost:5000
-let SERVER_URL = 'http://localhost:5003';
-try {
-  if (import.meta && import.meta.env && import.meta.env.VITE_SERVER_URL) {
-    SERVER_URL = import.meta.env.VITE_SERVER_URL.replace(/\/api\/?$/, '');
-  }
-} catch (e) {
-  // ignore
-}
+const SERVER_URL = (
+  import.meta.env?.VITE_SERVER_URL || "http://localhost:5003"
+).replace(/\/api\/?$/, "");
 
-// Attach token for auth on connect
-const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
+// Create socket instance with auto-connect false until ready
 const socket = io(SERVER_URL, {
-  transports: ['websocket', 'polling'],
-  auth: { token },
+  transports: ["websocket", "polling"],
+  autoConnect: true,
   reconnectionAttempts: 5,
+  auth: {
+    token: localStorage.getItem("token"),
+  },
 });
 
-socket.on('connect', () => {
-  console.log('Socket connected', socket.id);
+socket.on("connect", () => {
+  console.log("🔗 Socket connection established:", socket.id);
 });
 
-socket.on('connect_error', (err) => {
-  console.warn('Socket connect error', err.message);
-});
+// Utility to re-authenticate if a user logs in mid-session
+export const updateSocketAuth = (token) => {
+  socket.auth = { token };
+  socket.disconnect();
+  socket.connect();
+};
 
-export const subscribeToAuction = (itemId) => socket.emit('subscribe_auction', itemId);
-export const placeBidViaSocket = (itemId, userId, amount) => socket.emit('place_bid_socket', { itemId, userId, amount });
-
-export const onNewMessage = (cb) => socket.on('new_message', cb);
+export const subscribeToAuction = (itemId) =>
+  socket.emit("subscribe_auction", itemId);
+export const placeBidViaSocket = (payload) =>
+  socket.emit("place_bid_socket", payload);
+export const onNewMessage = (cb) => socket.on("new_message", cb);
 
 export default socket;
