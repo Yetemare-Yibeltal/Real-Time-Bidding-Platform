@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../../api/axios'
-import { EnhancedCard } from './EnhancedCard'
-import { Magnetic3DContainer } from './Magnetic3DContainer'
+// Corrected paths for files in the parent directory
+import { EnhancedCard } from '../EnhancedCard'
+import { Magnetic3DContainer } from '../Magnetic3DContainer'
 
 export default function ManageAuctions () {
   const [auctions, setAuctions] = useState([])
@@ -30,7 +31,57 @@ export default function ManageAuctions () {
     }
   }
 
-  // ... [Keep handleSubmit, handleCreateAndPay, deleteAuction logic here] ...
+  const handleSubmit = async e => {
+    e.preventDefault()
+    try {
+      if (editingId) {
+        await api.put(`/admin/auctions/${editingId}`, form)
+      } else {
+        await api.post('/admin/auctions', form)
+      }
+      setForm({
+        name: '',
+        description: '',
+        currentBid: '',
+        minIncrement: '',
+        endTime: '',
+        image: null
+      })
+      setEditingId(null)
+      fetchAuctions()
+    } catch (err) {
+      console.error('Error saving auction', err)
+      alert('Failed to save auction')
+    }
+  }
+
+  const editAuction = auction => {
+    setEditingId(auction.id)
+    setForm(auction)
+  }
+
+  const deleteAuction = async id => {
+    if (!window.confirm('Delete this auction?')) return
+    try {
+      await api.delete(`/admin/auctions/${id}`)
+      fetchAuctions()
+    } catch (err) {
+      console.error('Error deleting auction', err)
+    }
+  }
+
+  const handleCreateAndPay = async () => {
+    try {
+      const res = await api.post('/billing/create-session', {
+        amount: 5.0,
+        description: 'Listing Fee'
+      })
+      if (res.data?.url) window.location.href = res.data.url
+    } catch (err) {
+      console.error('Payment error', err)
+      alert('Payment failed')
+    }
+  }
 
   return (
     <main className='p-6 space-y-8'>
@@ -38,7 +89,6 @@ export default function ManageAuctions () {
         Manage Auctions
       </h2>
 
-      {/* Input Terminal */}
       <Magnetic3DContainer>
         <EnhancedCard className='bg-slate-900/80 border-white/5'>
           <h3 className='text-white font-bold mb-6'>
@@ -85,7 +135,6 @@ export default function ManageAuctions () {
               onChange={e => setForm({ ...form, description: e.target.value })}
               rows='2'
             />
-
             <div className='md:col-span-2 flex gap-4'>
               <button
                 type='submit'
@@ -105,7 +154,6 @@ export default function ManageAuctions () {
         </EnhancedCard>
       </Magnetic3DContainer>
 
-      {/* Auction List */}
       <div className='space-y-4'>
         {auctions.map(auction => (
           <EnhancedCard
