@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 
 // Contexts & Hooks
+import { useAuth } from './context/AuthContext'
 import { AuthProvider } from './context/AuthContext'
+
 import { PaymentProvider } from './context/PaymentContext'
 
 // Components & Pages
