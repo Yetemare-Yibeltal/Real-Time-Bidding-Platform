@@ -1,33 +1,37 @@
 import axios from "axios";
 
-// 1. Create instance with improved configuration
-const API = axios.create({
-  baseURL: "http://localhost:5000/api",
-  timeout: 10000, // 10s timeout for real-world reliability
+// Standardize on one port (e.g., 5003, or use your environment variable)
+const BASE = import.meta.env.VITE_SERVER_URL || "http://localhost:5003/api";
+
+const api = axios.create({
+  baseURL: BASE,
+  timeout: 10000,
 });
 
-// 2. Add Request Interceptor for Auth (Required for production apps)
-API.interceptors.request.use((req) => {
-  if (localStorage.getItem("profile")) {
-    req.headers.Authorization = `Bearer ${JSON.parse(localStorage.getItem("profile")).token}`;
+// Unified Interceptor
+api.interceptors.request.use((config) => {
+  // Check both storage keys if you've been using two different ones
+  const token =
+    localStorage.getItem("token") ||
+    JSON.parse(localStorage.getItem("profile"))?.token;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  return req;
+  return config;
 });
 
-// 3. API Methods
-export const fetchAuctions = () => API.get("/auctions");
-export const placeBid = (itemId, amount) =>
-  API.post(`/auctions/${encodeURIComponent(itemId)}/bid`, { amount });
-export const getHighestBid = (itemId) =>
-  API.get(`/auctions/item/${itemId}/highest`);
-export const searchUsers = (q) =>
-  API.get(`/users?search=${encodeURIComponent(q)}`);
-
-// 4. Added Error Interceptor for production debugging
-API.interceptors.response.use(
+// Unified Response Interceptor
+api.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("profile");
+      window.location.href = "/login";
+    }
     console.error("API Error:", err.response?.data || err.message);
     return Promise.reject(err);
   },
 );
+
+export default api;
