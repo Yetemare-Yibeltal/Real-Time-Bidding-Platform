@@ -5,8 +5,8 @@ const AuctionPage = ({ showToast }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Replace with your actual backend API URL
-    fetch('http://localhost:5000/api/auctions')
+    // Updated to match the new endpoint defined in server.js
+    fetch('http://localhost:5000/api/auctions/list')
       .then(res => res.json())
       .then(data => {
         setItems(data)
